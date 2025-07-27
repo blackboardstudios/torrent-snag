@@ -443,43 +443,6 @@ cd torrentsnag
 - [ ] Validate internationalization with different languages
 - [ ] Check error handling with invalid configurations
 
-## 🚀 Roadmap
-
-<details>
-<summary><strong>📅 Short Term (v1.1)</strong></summary>
-
-- [ ] **Chrome Web Store Publication** - Official distribution channel
-- [ ] **Enhanced Label System** - Custom label templates and auto-assignment rules  
-- [ ] **Site-Specific Patterns** - Pre-configured detection patterns for popular torrent sites
-- [ ] **Notification Customization** - Configurable success/error notification preferences
-- [ ] **Connection Health Monitoring** - Real-time client connection status indicators
-
-</details>
-
-<details>
-<summary><strong>📅 Medium Term (v1.2-1.5)</strong></summary>
-
-- [ ] **Firefox Support** - Port to Firefox with WebExtensions API
-- [ ] **Rutorrent Integration** - Support for popular web-based torrent client
-- [ ] **RSS Feed Monitoring** - Automatic torrent detection from RSS feeds
-- [ ] **Advanced Filtering** - Content-aware filters (file size, seeders, type detection)
-- [ ] **Torrent Preview** - Quick torrent info display before sending
-- [ ] **Batch Operations** - Multi-client sending and advanced queue management
-
-</details>
-
-<details>
-<summary><strong>📅 Long Term (v2.0+)</strong></summary>
-
-- [ ] **Native Messaging** - Direct communication with desktop torrent clients
-- [ ] **Cloud Integration** - Sync settings across devices via cloud storage
-- [ ] **Smart Categorization** - AI-powered automatic content categorization
-- [ ] **Integration Hub** - Connect with media management tools (Sonarr, Radarr)
-- [ ] **Mobile Companion** - Remote control via mobile app
-- [ ] **Statistics Dashboard** - Detailed usage analytics and insights
-
-</details>
-
 <details>
 <summary><strong>💡 Community Requests</strong></summary>
 
@@ -494,20 +457,6 @@ Vote on features by creating/upvoting GitHub issues!
 </details>
 
 ---
-
-## 📝 Changelog
-
-### Version 1.0.0 (Current)
-- ✅ Multi-client support (qBittorrent, Transmission, Deluge, Generic Download)
-- ✅ Intelligent link detection with custom patterns
-- ✅ Advanced filtering system with regex support
-- ✅ Complete internationalization (10 languages)
-- ✅ Settings import/export functionality
-- ✅ Performance optimization with configurable limits
-- ✅ Context menu integration
-- ✅ Keyboard shortcuts support
-- ✅ Duplicate prevention system
-- ✅ Dark mode and theme support
 
 ## 🤝 Contributing & Support
 
@@ -594,7 +543,6 @@ cd torrentsnag
 
 ## 📄 License & Acknowledgments
 
-<div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
 
@@ -603,7 +551,7 @@ See the [LICENSE](LICENSE) file for details.
 
 **Developed by [Blackboard Studios](https://blackboardstudios.com)**
 
-</div>
+
 
 ### 🙏 Acknowledgments
 
