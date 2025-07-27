@@ -1,0 +1,37 @@
+{
+  "name": "torrent-snag",
+  "version": "1.0.0",
+  "description": "Chrome extension to detect torrent and magnet links and send them to qBittorrent",
+  "main": "background.js",
+  "scripts": {
+    "build": "npm run clean && npm run copy && npm run validate",
+    "build:dev": "npm run clean && npm run copy && echo '✅ Development build complete'",
+    "build:prod": "npm run clean && npm run copy && echo '✅ Production build complete'",
+    "copy": "mkdir -p dist && cp -r src/* dist/ && echo '📁 Files copied to dist/'",
+    "clean": "rm -rf dist/ && echo '🧹 Cleaned dist directory'",
+    "validate": "echo '🔍 Validating build...' && test -f dist/manifest.json && echo '✅ manifest.json found' && test -f dist/background/background.js && echo '✅ background.js found' && echo '🎉 Basic validation passed!'",
+    "test": "./test-build.sh",
+    "test:build": "./test-build.sh",
+    "lint": "echo 'Lint script placeholder'",
+    "watch": "echo 'Watch mode not implemented yet'"
+  },
+  "keywords": [
+    "chrome-extension",
+    "torrent",
+    "qbittorrent",
+    "magnet-links"
+  ],
+  "author": "Blackboard Studios",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "@types/chrome": "^0.0.268"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/torrentsnag.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/torrentsnag/issues"
+  },
+  "homepage": "https://github.com/yourusername/torrentsnag#readme"
+}

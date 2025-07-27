@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torrent Snag - Options</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="../assets/icons/logo.png" alt="Torrent Snag Logo" class="logo-image">
+                    <div class="logo-text">
+                        <h1 data-i18n="extensionName">Torrent Snag</h1>
+                        <span class="version" data-i18n="options">Options</span>
+                    </div>
+                </div>
+                <div class="header-tip">
+                    <a href='https://ko-fi.com/E1E31IN4LP' target='_blank'>
+                        <img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' />
+                    </a>
+                </div>
+                <div class="header-actions">
+                    <button id="save-all-settings" class="btn btn-primary" disabled>
+                        <span class="icon icon-save"></span>
+                        <span data-i18n="saveChanges">Save Changes</span>
+                    </button>
+                    <button id="export-settings" class="btn btn-ghost">
+                        <span class="icon icon-download"></span>
+                        <span data-i18n="export">Export</span>
+                    </button>
+                    <button id="import-settings" class="btn btn-ghost">
+                        <span class="icon icon-upload"></span>
+                        <span data-i18n="import">Import</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-tab="connection">
+                    <span class="icon icon-link"></span>
+                    <span data-i18n="connectionTab">Connection</span>
+                </button>
+                <button class="nav-tab" data-tab="patterns">
+                    <span class="icon icon-target"></span>
+                    <span data-i18n="patternsTab">Patterns</span>
+                </button>
+                <button class="nav-tab" data-tab="performance">
+                    <span class="icon icon-zap"></span>
+                    <span data-i18n="performanceTab">Performance</span>
+                </button>
+                <button class="nav-tab" data-tab="advanced">
+                    <span class="icon icon-settings"></span>
+                    <span data-i18n="advancedTab">Advanced</span>
+                </button>
+                <button class="nav-tab" data-tab="about">
+                    <span class="icon icon-info"></span>
+                    <span data-i18n="aboutTab">About</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Connection Tab -->
+            <section id="tab-connection" class="tab-content active">
+                <div class="section-header">
+                    <h2 data-i18n="connectionSettings">Connection Settings</h2>
+                    <p data-i18n="connectionSettingsDesc">Configure your torrent client connection</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 data-i18n="handlerSelection">Handler Selection</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="form-group">
+                            <label for="handler-selector" data-i18n="clientType">Client Type</label>
+                            <select id="handler-selector" class="form-control">
+                                <!-- Options populated by JavaScript -->
+                            </select>
+                            <small id="handler-description" class="form-text" data-i18n="chooseClient">Choose your torrent client</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 id="handler-config-title" data-i18n="clientConfig">Client Configuration</h3>
+                    </div>
+                    <div class="card-content">
+                        <div id="handler-config-content">
+                            <!-- Configuration fields populated dynamically -->
+                        </div>
+                        <div class="form-actions">
+                            <button id="test-connection" class="btn btn-secondary" data-i18n="testConnection">Test Connection</button>
+                        </div>
+                        <div id="connection-status" class="status-message"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 data-i18n="troubleshooting">Troubleshooting</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="help-text">
+                            <h4 data-i18n="qbittorrentIssues">Common qBittorrent Issues:</h4>
+                            <p><strong data-i18n="connectionFailed">Connection Failed / CORS Errors:</strong></p>
+                            <ul>
+                                <li data-i18n="enableWebUI">Enable qBittorrent Web UI: Tools → Options → Web UI → Enable</li>
+                                <li data-i18n="bypassAuth">Try "Bypass authentication for clients on localhost"</li>
+                                <li data-i18n="disableCSRF">Temporarily disable CSRF protection</li>
+                                <li data-i18n="verifyUrl">Verify URL is correct (default: http://localhost:8080)</li>
+                            </ul>
+                            
+                            <p><strong data-i18n="authFailed">Authentication Failed:</strong></p>
+                            <ul>
+                                <li data-i18n="checkDefaultCreds">Check default credentials (usually "admin" with blank password)</li>
+                                <li data-i18n="verifyWebUICreds">Verify Web UI credentials in qBittorrent settings</li>
+                                <li data-i18n="resetWebUIPassword">Try resetting Web UI password</li>
+                            </ul>
+                            
+                            <p><strong data-i18n="connectionRefused">Connection Refused:</strong></p>
+                            <ul>
+                                <li data-i18n="verifyRunning">Verify qBittorrent is running</li>
+                                <li data-i18n="checkWebUIPort">Check Web UI port (default: 8080)</li>
+                                <li data-i18n="testWebUIInBrowser">Test by opening Web UI in browser first</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Patterns Tab -->
+            <section id="tab-patterns" class="tab-content">
+                <div class="section-header">
+                    <h2 data-i18n="detectionPatterns">Detection Patterns</h2>
+                    <p data-i18n="detectionPatternsDesc">Manage torrent detection and filtering rules</p>
+                </div>
+
+                <div class="pattern-section">
+                    <div class="pattern-header">
+                        <h3 data-i18n="detectionPatterns">Detection Patterns</h3>
+                        <button id="add-pattern" class="btn btn-primary">
+                            <span class="icon icon-plus"></span>
+                            <span data-i18n="addPattern">Add Pattern</span>
+                        </button>
+                    </div>
+                    <div class="pattern-description" data-i18n="patternDescription">
+                        Regex patterns used to detect torrent and magnet links on web pages
+                    </div>
+                    <div id="pattern-list" class="pattern-list">
+                        <!-- Patterns populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="pattern-section">
+                    <div class="pattern-header">
+                        <h3 data-i18n="filterPatterns">Filter Patterns</h3>
+                        <button id="add-filter" class="btn btn-primary">
+                            <span class="icon icon-plus"></span>
+                            <span data-i18n="addFilter">Add Filter</span>
+                        </button>
+                    </div>
+                    <div class="pattern-description" data-i18n="filterDescription">
+                        Skip torrents that match these patterns (applied to link text and URLs)
+                    </div>
+                    <div id="filter-list" class="pattern-list">
+                        <!-- Filters populated dynamically -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Performance Tab -->
+            <section id="tab-performance" class="tab-content">
+                <div class="section-header">
+                    <h2 data-i18n="performanceSettings">Performance Settings</h2>
+                    <p data-i18n="performanceSettingsDesc">Optimize extension performance and behavior</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 data-i18n="scanningLimits">Scanning Limits</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="max-links" data-i18n="maxLinks">Maximum Links Per Scan</label>
+                                <input type="number" id="max-links" class="form-control" min="100" max="5000" step="100" value="1000">
+                                <small class="form-text" data-i18n="maxLinksHelp">Limit scanning to prevent performance issues</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="chunk-size" data-i18n="chunkSize">Processing Chunk Size</label>
+                                <input type="number" id="chunk-size" class="form-control" min="50" max="500" step="50" value="100">
+                                <small class="form-text" data-i18n="chunkSizeHelp">Number of links processed at once</small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="debounce-delay" data-i18n="scanDelay">Scan Delay (ms)</label>
+                            <input type="number" id="debounce-delay" class="form-control" min="100" max="2000" step="100" value="500">
+                            <small class="form-text" data-i18n="scanDelayHelp">Delay before scanning after page changes</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 data-i18n="duplicateTracking">Duplicate Tracking</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="tracked-count">0</div>
+                                <div class="stat-label" data-i18n="trackedItems">Tracked Items</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="last-cleanup">Never</div>
+                                <div class="stat-label" data-i18n="lastCleanup">Last Cleanup</div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button id="cleanup-duplicates" class="btn btn-secondary" data-i18n="cleanupOldEntries">Cleanup Old Entries</button>
+                            <button id="clear-duplicates" class="btn btn-danger" data-i18n="clearAll">Clear All</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Advanced Tab -->
+            <section id="tab-advanced" class="tab-content">
+                <div class="section-header">
+                    <h2 data-i18n="advancedSettings">Advanced Settings</h2>
+                    <p data-i18n="advancedSettingsDesc">Additional configuration options</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 data-i18n="appearance">Appearance</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="form-group">
+                            <label class="switch">
+                                <input type="checkbox" id="force-dark-mode">
+                                <span class="slider"></span>
+                            </label>
+                            <div class="switch-label">
+                                <strong data-i18n="forceDarkMode">Force Dark Mode</strong>
+                                <small data-i18n="forceDarkModeHelp">Override system theme and always use dark mode</small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="language-selector"><strong data-i18n="language">Language</strong></label>
+                            <select id="language-selector" class="form-control">
+                                <option value="en">English</option>
+                                <option value="es">Español</option>
+                                <option value="fr">Français</option>
+                                <option value="de">Deutsch</option>
+                                <option value="ru">Русский</option>
+                                <option value="pt">Português</option>
+                                <option value="zh_CN">中文 (简体)</option>
+                                <option value="it">Italiano</option>
+                                <option value="ja">日本語</option>
+                                <option value="tr">Türkçe</option>
+                            </select>
+                            <small class="form-text" data-i18n="languageHelp">Choose your preferred language for the extension UI</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 data-i18n="dataManagement">Data Management</h3>
+                    </div>
+                    <div class="card-content">
+                        <div id="import-export-status" class="status-message"></div>
+                        <div class="help-text">
+                            <p><strong data-i18n="export">Export:</strong> <span data-i18n="exportHelp">Downloads a JSON file with your patterns, filters, and preferences</span></p>
+                            <p><strong data-i18n="import">Import:</strong> <span data-i18n="importHelp">Loads settings from a JSON file (preserves built-in patterns/filters)</span></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- About Tab -->
+            <section id="tab-about" class="tab-content">
+                <div class="section-header">
+                    <h2 data-i18n="aboutTitle">About Torrent Snag</h2>
+                    <p data-i18n="aboutSubtitle">Extension information and credits</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 data-i18n="extensionInfo">Extension Information</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="about-info">
+                            <div class="about-logo">
+                                <img src="../assets/icons/logo.png" alt="Torrent Snag Logo" class="about-logo-image">
+                            </div>
+                            <div class="about-details">
+                                <h2>Torrent Snag</h2>
+                                <p class="version-info">
+                                    <strong data-i18n="version">Version:</strong> <span id="extension-version">1.0.0</span>
+                                </p>
+                                <p class="description" data-i18n="aboutDescription">
+                                    Automatically detect torrent and magnet links and send them to your preferred torrent client or download directly.
+                                </p>
+                                <p class="site">
+                                    <strong data-i18n="site">GitHub:</strong> <a href="https://github.com/something" target="_blank">Torrent Snag</a>
+                                </p>
+                                <p class="developer">
+                                    <strong data-i18n="developer">Developer:</strong> <a href="https://blackboardstudios.net" target="_blank">Blackboard Studios</a>
+                                </p>                                
+                                <p class="license">
+                                    <strong data-i18n="license">License:</strong> <span data-i18n="licenseText">GPLv3 License</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 data-i18n="systemInfo">System Information</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="system-info">
+                            <div class="info-row">
+                                <span class="info-label" data-i18n="manifestVersion">Manifest Version:</span>
+                                <span class="info-value">3</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label" data-i18n="browserVersion">Browser Version:</span>
+                                <span class="info-value" id="browser-version" data-i18n="loading">Loading...</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label" data-i18n="extensionId">Extension ID:</span>
+                                <span class="info-value" id="extension-id" data-i18n="loading">Loading...</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label" data-i18n="installType">Install Type:</span>
+                                <span class="info-value" id="install-type" data-i18n="loading">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="import-file" accept=".json" style="display: none;">
+    <!-- Pattern Modal -->
+    <div id="pattern-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Add Pattern</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="pattern-name">Pattern Name</label>
+                    <input type="text" id="pattern-name" class="form-control" placeholder="My Custom Pattern">
+                </div>
+                
+                <div class="form-group">
+                    <label for="pattern-regex">Regex Pattern</label>
+                    <input type="text" id="pattern-regex" class="form-control" placeholder="https?://example\.com/.*\.torrent">
+                    <small class="form-text">Use proper regex escaping. Test your pattern before saving.</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="switch">
+                        <input type="checkbox" id="pattern-enabled" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <div class="switch-label">
+                        <strong>Enabled</strong>
+                    </div>
+                </div>
+                
+                <div id="pattern-validation" class="status-message"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-pattern" class="btn btn-secondary">Cancel</button>
+                <button id="save-pattern" class="btn btn-primary">Save Pattern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Modal -->
+    <div id="filter-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="filter-modal-title">Add Filter</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="filter-name">Filter Name</label>
+                    <input type="text" id="filter-name" class="form-control" placeholder="Skip Unwanted Content">
+                </div>
+                
+                <div class="form-group">
+                    <label for="filter-regex">Regex Pattern</label>
+                    <input type="text" id="filter-regex" class="form-control" placeholder="\\b(greatest|hits|live)\\b">
+                    <small class="form-text">Torrents matching this pattern will be skipped. Matches against link text and URLs.</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="switch">
+                        <input type="checkbox" id="filter-enabled" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <div class="switch-label">
+                        <strong>Enabled</strong>
+                    </div>
+                </div>
+                
+                <div id="filter-validation" class="status-message"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-filter" class="btn btn-secondary">Cancel</button>
+                <button id="save-filter" class="btn btn-primary">Save Filter</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../utils/config.js"></script>
+    <script src="../utils/hash.js"></script>
+    <script src="../handlers/base-handler.js"></script>
+    <script src="../handlers/qbittorrent-handler.js"></script>
+    <script src="../handlers/transmission-handler.js"></script>
+    <script src="../handlers/deluge-handler.js"></script>
+    <script src="../handlers/generic-download-handler.js"></script>
+    <script src="../handlers/handler-factory.js"></script>
+    <script src="options.js"></script>
+</body>
+</html>
