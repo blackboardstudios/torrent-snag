@@ -477,7 +477,7 @@ Vote on features by creating/upvoting GitHub issues!
 | 📖 **Documentation** | This README | Setup guides and troubleshooting |
 | 🐛 **Bug Reports** | [GitHub Issues](https://github.com/blackboardstudios/torrent-snag/issues) | Report problems and errors |
 | 💡 **Feature Requests** | [GitHub Issues](https://github.com/blackboardstudios/torrent-snag/issues) | Suggest improvements |
-| � **General Discussion** | [GitHub Discussions](https://github.com/blackboardstudios/torrent-snag/discussions) | Questions and community chat |
+| 💬 **General Discussion** | [GitHub Discussions](https://github.com/blackboardstudios/torrent-snag/discussions) | Questions and community chat |
 | 📄 **Technical Details** | [PRD.md](docs/PRD.md) | Implementation specifics |
 
 ### 🌍 Contributing to Translation
