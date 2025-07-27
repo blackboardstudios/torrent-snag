@@ -28,10 +28,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/torrentsnag.git"
+    "url": "https://github.com/blackboardstudios/torrent-snag.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/torrentsnag/issues"
+    "url": "https://github.com/blackboardstudios/torrent-snag/issues"
   },
-  "homepage": "https://github.com/yourusername/torrentsnag#readme"
+  "homepage": "https://github.com/blackboardstudios/torrent-snag#readme"
 }

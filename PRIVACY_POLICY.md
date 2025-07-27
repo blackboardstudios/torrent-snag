@@ -53,8 +53,8 @@ We may update this privacy policy to reflect changes in our practices or for leg
 ## Contact
 
 For privacy-related questions or concerns, please contact Blackboard Studios through:
-- GitHub Issues: [https://github.com/yourusername/torrentsnag/issues](https://github.com/yourusername/torrentsnag/issues)
-- GitHub Discussions: [https://github.com/yourusername/torrentsnag/discussions](https://github.com/yourusername/torrentsnag/discussions)
+- GitHub Issues: [https://github.com/blackboardstudios/torrent-snag/issues](https://github.com/blackboardstudios/torrent-snag/issues)
+- GitHub Discussions: [https://github.com/blackboardstudios/torrent-snag/discussions](https://github.com/blackboardstudios/torrent-snag/discussions)
 - Email: privacy@blackboardstudios.com
 
 ## Your Rights

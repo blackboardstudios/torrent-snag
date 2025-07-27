@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Automatically detect torrent and magnet links and send them to your torrent handler or download directly.",
   "author": "Blackboard Studios",
-  "homepage_url": "https://github.com/yourusername/torrentsnag",
+  "homepage_url": "https://github.com/blackboardstudios/torrent-snag",
   "permissions": [
     "storage",
     "activeTab",

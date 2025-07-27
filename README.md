@@ -10,14 +10,14 @@
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Coming%20Soon-lightgrey?style=for-the-badge&logo=googlechrome)](https://chrome.google.com/webstore)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/gpl-3.0.html)
-[![GitHub release](https://img.shields.io/github/release/yourusername/torrentsnag.svg?style=for-the-badge)](https://github.com/yourusername/torrentsnag/releases)
-[![GitHub stars](https://img.shields.io/github/stars/yourusername/torrentsnag.svg?style=for-the-badge)](https://github.com/yourusername/torrentsnag/stargazers)
+[![GitHub release](https://img.shields.io/github/release/yourusername/torrentsnag.svg?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/releases)
+[![GitHub stars](https://img.shields.io/github/stars/yourusername/torrentsnag.svg?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/stargazers)
 
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-blue?style=flat-square&logo=googlechrome)](https://developer.chrome.com/docs/extensions/mv3/)
-[![Multi-Client](https://img.shields.io/badge/Clients-qBittorrent%20%7C%20Transmission%20%7C%20Deluge-green?style=flat-square)](https://github.com/yourusername/torrentsnag#-multi-client-support)
-[![Languages](https://img.shields.io/badge/Languages-10%20Supported-orange?style=flat-square)](https://github.com/yourusername/torrentsnag#internationalization)
-[![GitHub issues](https://img.shields.io/github/issues/yourusername/torrentsnag.svg?style=flat-square)](https://github.com/yourusername/torrentsnag/issues)
-[![GitHub pull requests](https://img.shields.io/github/issues-pr/yourusername/torrentsnag.svg?style=flat-square)](https://github.com/yourusername/torrentsnag/pulls)
+[![Multi-Client](https://img.shields.io/badge/Clients-qBittorrent%20%7C%20Transmission%20%7C%20Deluge-green?style=flat-square)](https://github.com/blackboardstudios/torrent-snag#-multi-client-support)
+[![Languages](https://img.shields.io/badge/Languages-10%20Supported-orange?style=flat-square)](https://github.com/blackboardstudios/torrent-snag#internationalization)
+[![GitHub issues](https://img.shields.io/github/issues/yourusername/torrentsnag.svg?style=flat-square)](https://github.com/blackboardstudios/torrent-snag/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/yourusername/torrentsnag.svg?style=flat-square)](https://github.com/blackboardstudios/torrent-snag/pulls)
 [![Ko-fi](https://img.shields.io/badge/support_me_on_ko--fi-F16061?style=flat-square&logo=kofi&logoColor=f5f5f5)](https://ko-fi.com/sphildreth)
 
 
@@ -105,7 +105,7 @@ Torrent Snag automatically detects torrent and magnet links on web pages and sen
 ### Manual Installation (Recommended for now)
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/torrentsnag.git
+git clone https://github.com/blackboardstudios/torrent-snag.git
 cd torrentsnag
 
 # Build the extension  
@@ -412,7 +412,7 @@ torrentsnag/
 ### Building from Source
 ```bash
 # Clone the repository  
-git clone https://github.com/yourusername/torrentsnag.git
+git clone https://github.com/blackboardstudios/torrent-snag.git
 cd torrentsnag
 
 # Build the extension
@@ -516,8 +516,8 @@ Vote on features by creating/upvoting GitHub issues!
 **Help make Torrent Snag even better!**
 
 [![Contribute](https://img.shields.io/badge/Contribute-Welcome-brightgreen?style=for-the-badge)](CONTRIBUTING.md)
-[![Issues](https://img.shields.io/github/issues/yourusername/torrentsnag?style=for-the-badge)](https://github.com/yourusername/torrentsnag/issues)
-[![Discussions](https://img.shields.io/badge/Discussions-Join%20Us-blue?style=for-the-badge)](https://github.com/yourusername/torrentsnag/discussions)
+[![Issues](https://img.shields.io/github/issues/yourusername/torrentsnag?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/issues)
+[![Discussions](https://img.shields.io/badge/Discussions-Join%20Us-blue?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/discussions)
 
 </div>
 
@@ -526,9 +526,9 @@ Vote on features by creating/upvoting GitHub issues!
 | Type | Where | Description |
 |------|-------|-------------|
 | 📖 **Documentation** | This README | Setup guides and troubleshooting |
-| 🐛 **Bug Reports** | [GitHub Issues](https://github.com/yourusername/torrentsnag/issues) | Report problems and errors |
-| 💡 **Feature Requests** | [GitHub Issues](https://github.com/yourusername/torrentsnag/issues) | Suggest improvements |
-| � **General Discussion** | [GitHub Discussions](https://github.com/yourusername/torrentsnag/discussions) | Questions and community chat |
+| 🐛 **Bug Reports** | [GitHub Issues](https://github.com/blackboardstudios/torrent-snag/issues) | Report problems and errors |
+| 💡 **Feature Requests** | [GitHub Issues](https://github.com/blackboardstudios/torrent-snag/issues) | Suggest improvements |
+| � **General Discussion** | [GitHub Discussions](https://github.com/blackboardstudios/torrent-snag/discussions) | Questions and community chat |
 | 📄 **Technical Details** | [PRD.md](docs/PRD.md) | Implementation specifics |
 
 ### 🌍 Contributing to Translation
@@ -555,7 +555,7 @@ Vote on features by creating/upvoting GitHub issues!
 
 ```bash
 # Fork and clone the repository
-git clone https://github.com/yourusername/torrentsnag.git
+git clone https://github.com/blackboardstudios/torrent-snag.git
 cd torrentsnag
 
 # Build the extension
