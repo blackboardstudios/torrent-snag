@@ -8,7 +8,7 @@
 
 **A powerful Chrome extension for seamless torrent management**
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Coming%20Soon-lightgrey?style=for-the-badge&logo=googlechrome)](https://chrome.google.com/webstore)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Torrent%20Snag-lightgrey?style=for-the-badge&logo=googlechrome)](https://chromewebstore.google.com/detail/torrent-snag/ekokhjgmofjdgdoflmegelfibjciobjd?authuser=0&hl=en)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/gpl-3.0.html)
 [![GitHub release](https://img.shields.io/github/release/yourusername/torrentsnag.svg?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/releases)
 [![GitHub stars](https://img.shields.io/github/stars/yourusername/torrentsnag.svg?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/stargazers)
