@@ -10,14 +10,14 @@
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Torrent%20Snag-lightgrey?style=for-the-badge&logo=googlechrome)](https://chromewebstore.google.com/detail/torrent-snag/ekokhjgmofjdgdoflmegelfibjciobjd?authuser=0&hl=en)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/gpl-3.0.html)
-[![GitHub release](https://img.shields.io/github/release/yourusername/torrentsnag.svg?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/releases)
-[![GitHub stars](https://img.shields.io/github/stars/yourusername/torrentsnag.svg?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/stargazers)
+[![GitHub release](https://img.shields.io/github/release/blackboardstudios/torrent-snag.svg?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/releases)
+[![GitHub stars](https://img.shields.io/github/stars/blackboardstudios/torrent-snag.svg?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/stargazers)
 
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-blue?style=flat-square&logo=googlechrome)](https://developer.chrome.com/docs/extensions/mv3/)
 [![Multi-Client](https://img.shields.io/badge/Clients-qBittorrent%20%7C%20Transmission%20%7C%20Deluge-green?style=flat-square)](https://github.com/blackboardstudios/torrent-snag#-multi-client-support)
 [![Languages](https://img.shields.io/badge/Languages-10%20Supported-orange?style=flat-square)](https://github.com/blackboardstudios/torrent-snag#internationalization)
-[![GitHub issues](https://img.shields.io/github/issues/yourusername/torrentsnag.svg?style=flat-square)](https://github.com/blackboardstudios/torrent-snag/issues)
-[![GitHub pull requests](https://img.shields.io/github/issues-pr/yourusername/torrentsnag.svg?style=flat-square)](https://github.com/blackboardstudios/torrent-snag/pulls)
+[![GitHub issues](https://img.shields.io/github/issues/blackboardstudios/torrent-snag.svg?style=flat-square)](https://github.com/blackboardstudios/torrent-snag/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/blackboardstudios/torrent-snag.svg?style=flat-square)](https://github.com/blackboardstudios/torrent-snag/pulls)
 [![Ko-fi](https://img.shields.io/badge/support_me_on_ko--fi-F16061?style=flat-square&logo=kofi&logoColor=f5f5f5)](https://ko-fi.com/sphildreth)
 
 
@@ -465,7 +465,7 @@ Vote on features by creating/upvoting GitHub issues!
 **Help make Torrent Snag even better!**
 
 [![Contribute](https://img.shields.io/badge/Contribute-Welcome-brightgreen?style=for-the-badge)](CONTRIBUTING.md)
-[![Issues](https://img.shields.io/github/issues/yourusername/torrentsnag?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/issues)
+[![Issues](https://img.shields.io/github/issues/blackboardstudios/torrent-snag?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/issues)
 [![Discussions](https://img.shields.io/badge/Discussions-Join%20Us-blue?style=for-the-badge)](https://github.com/blackboardstudios/torrent-snag/discussions)
 
 </div>
@@ -568,7 +568,7 @@ See the [LICENSE](LICENSE) file for details.
 
 **🌟 Star this repository if you find Torrent Snag useful!**
 
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/torrentsnag&type=Date)](https://star-history.com/#yourusername/torrentsnag&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=blackboardstudios/torrent-snag&type=Date)](https://star-history.com/#blackboardstudios/torrent-snag&Date)
 
 **Consider [supporting development](https://ko-fi.com/sphildreth) ☕**
 
