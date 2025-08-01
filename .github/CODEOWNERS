@@ -1,2 +1,2 @@
 # Require reviews from specific users or teams for main branch changes
-/main  @sphildreth @bbs-steven
+/main @bbs-steven
