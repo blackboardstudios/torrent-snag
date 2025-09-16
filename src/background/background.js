@@ -10,6 +10,7 @@ importScripts('../handlers/generic-download-handler.js');
 importScripts('../handlers/handler-factory.js');
 
 // Import utilities
+importScripts('../utils/config.js');
 importScripts('../utils/context-menu.js');
 
 // Service worker state management
@@ -24,7 +25,12 @@ const serviceWorkerState = {
     try {
       // Restore critical state from storage
       const data = await chrome.storage.local.get(['config', 'duplicateTracking']);
-      this.config = data.config;
+      // Use merged config to avoid partial state issues
+      try {
+        this.config = await configUtils.getConfig();
+      } catch (_) {
+        this.config = data.config;
+      }
       this.duplicateTracking = data.duplicateTracking;
       this.isInitialized = true;
       
@@ -41,8 +47,7 @@ const serviceWorkerState = {
 // Handler management functions
 async function createCurrentHandler() {
   try {
-    const config = await chrome.storage.local.get(['config']);
-    const appConfig = config.config;
+    const appConfig = await configUtils.getConfig();
     
     if (!appConfig || !appConfig.selectedHandler) {
       throw new Error('No handler configured');
@@ -99,10 +104,21 @@ const badgeManager = {
 };
 
 // Event listeners
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   await serviceWorkerState.initialize();
-  await initializeDefaultConfig();
-  
+
+  // Only initialize default config on fresh install, or if missing
+  try {
+    const { config } = await chrome.storage.local.get(['config']);
+    const isFreshInstall = details?.reason === 'install';
+    if (isFreshInstall || !config) {
+      await initializeDefaultConfig();
+    }
+  } catch (e) {
+    // As a safety net, attempt to initialize defaults if read failed
+    await initializeDefaultConfig();
+  }
+
   // Setup context menus (extension icon only, no link menus)
   await contextMenuUtils.setupContextMenus();
 });
@@ -199,8 +215,15 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 // Core functions
 async function initializeDefaultConfig() {
+  // Do not overwrite existing user configuration
+  const existing = await chrome.storage.local.get(['config']);
+  if (existing && existing.config) {
+    return;
+  }
+
   const DEFAULT_CONFIG = {
     selectedHandler: 'qbittorrent',
+    language: 'en',
     handlers: {
       qbittorrent: {
         url: 'http://localhost:8080',
@@ -237,8 +260,40 @@ async function initializeDefaultConfig() {
         regex: 'https?://[^\\s]*\\.torrent(?:\\?[^\\s]*)?',
         enabled: true,
         builtin: true
+      },
+      {
+        id: 'html-torrent-downloads',
+        name: 'HTML Torrent Downloads',
+        regex: 'https?://[^\\s]*(?:/torrents?/download/|/download/[^\\s]*\\.html|/torrent/[^\\s]*\\.html|[?&]action=download)',
+        enabled: true,
+        builtin: true
       }
-    ]
+    ],
+    performance: {
+      maxLinksPerScan: 1000,
+      chunkSize: 100,
+      debounceDelay: 500,
+      maxDuplicateEntries: 10000
+    },
+    filters: [
+      {
+        id: 'skip-greatest-hits',
+        name: 'Skip Greatest Hits',
+        regex: '\\b(greatest|hits)\\b',
+        enabled: true,
+        builtin: true
+      },
+      {
+        id: 'skip-live-albums',
+        name: 'Skip Live Albums',
+        regex: '\\b(live|concert)\\b',
+        enabled: true,
+        builtin: true
+      }
+    ],
+    theme: {
+      forceDarkMode: false
+    }
   };
   
   await chrome.storage.local.set({ config: DEFAULT_CONFIG });
@@ -313,15 +368,19 @@ async function sendTorrentsToHandler(urls, tabId, labels = []) {
       }
     }
     
-    // Clear detected links and badge
+    // Clear detected links and badge (ignore if no content script on tab)
     if (tabId) {
-      await chrome.tabs.sendMessage(tabId, { type: 'CLEAR_DETECTED_LINKS' });
+      try {
+        await chrome.tabs.sendMessage(tabId, { type: 'CLEAR_DETECTED_LINKS' });
+      } catch (e) {
+        // Tab may not have our content script; ignore
+      }
       await badgeManager.clearBadge(tabId);
     }
     
     // Show success notification
-    const config = await chrome.storage.local.get(['config']);
-    const selectedHandler = config.config?.selectedHandler || 'handler';
+    const mergedConfig = await configUtils.getConfig();
+    const selectedHandler = mergedConfig.selectedHandler || 'qbittorrent';
     const handlerName = HandlerFactory.getAvailableHandlers().find(h => h.id === selectedHandler)?.name || selectedHandler;
     
     chrome.notifications.create({

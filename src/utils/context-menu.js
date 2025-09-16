@@ -34,8 +34,9 @@ const contextMenuUtils = {
   // Get display name for current handler
   async getHandlerDisplayName() {
     try {
-      const config = await chrome.storage.local.get(['config']);
-      const selectedHandler = config.config?.selectedHandler || 'qbittorrent';
+      // Use merged configuration for robustness
+      const merged = await configUtils.getConfig();
+      const selectedHandler = merged.selectedHandler || 'qbittorrent';
       const handlers = HandlerFactory.getAvailableHandlers();
       const handler = handlers.find(h => h.id === selectedHandler);
       return handler ? handler.name : 'Torrent Client';

@@ -11,6 +11,7 @@ class QBittorrentHandler extends BaseTorrentHandler {
   }
 
   async login() {
+    let lastStatus = null;
     try {
       const formData = new FormData();
       formData.append('username', this.username);
@@ -26,6 +27,7 @@ class QBittorrentHandler extends BaseTorrentHandler {
           'User-Agent': 'TorrentSnag/1.0'
         }
       });
+      lastStatus = response.status;
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -54,10 +56,10 @@ Possible solutions:
 3. Or add "Access-Control-Allow-Origin: *" to qBittorrent's Web UI settings
 4. Temporarily disable CSRF protection in qBittorrent Web UI
 5. Verify the URL is correct (default: http://localhost:8080)`;
-      } else if (response && response.status === 403) {
+      } else if (lastStatus === 403) {
         errorMessage = 'Access forbidden - CSRF protection may be blocking the request';
         helpText = 'Try disabling CSRF protection in qBittorrent Web UI settings';
-      } else if (response && response.status === 401) {
+      } else if (lastStatus === 401) {
         errorMessage = 'Authentication failed - Invalid username or password';
         helpText = 'Check your qBittorrent Web UI credentials';
       }

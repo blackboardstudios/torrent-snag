@@ -86,15 +86,24 @@ class TransmissionHandler extends BaseTorrentHandler {
             body.arguments.labels = [label.trim()];
           }
 
-          const response = await fetch(`${this.baseURL}/transmission/rpc`, {
+          let response = await fetch(`${this.baseURL}/transmission/rpc`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(body)
           });
 
+          // If session ID missing/stale, capture it and retry once
           if (response.status === 409) {
-            this.sessionId = response.headers.get('X-Transmission-Session-Id');
-            continue; // Retry with new session ID
+            const newSessionId = response.headers.get('X-Transmission-Session-Id');
+            if (newSessionId) {
+              this.sessionId = newSessionId;
+              headers['X-Transmission-Session-Id'] = newSessionId;
+              response = await fetch(`${this.baseURL}/transmission/rpc`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(body)
+              });
+            }
           }
 
           if (response.ok) {
