@@ -75,10 +75,76 @@ const DEFAULT_CONFIG = {
   }
 };
 
+// Helper: deep merge defaults with stored config (safe for nested objects)
+function isPlainObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function deepMerge(defaults, stored) {
+  // If stored is not an object, fall back to defaults
+  if (!isPlainObject(defaults)) return stored !== undefined ? stored : defaults;
+  if (!isPlainObject(stored)) return { ...defaults };
+
+  const result = { ...defaults };
+  for (const key of Object.keys(stored)) {
+    const defVal = defaults[key];
+    const stVal = stored[key];
+
+    if (Array.isArray(defVal) && Array.isArray(stVal)) {
+      // Prefer stored arrays; built-in reconciliation handled later
+      result[key] = stVal.slice();
+    } else if (isPlainObject(defVal) && isPlainObject(stVal)) {
+      result[key] = deepMerge(defVal, stVal);
+    } else {
+      result[key] = stVal;
+    }
+  }
+  return result;
+}
+
+function ensureBuiltinItems(currentArray, defaultArray) {
+  if (!Array.isArray(currentArray)) return defaultArray.slice();
+  if (!Array.isArray(defaultArray)) return currentArray.slice();
+
+  const byId = new Map(currentArray.map(item => [item.id, item]));
+  defaultArray.forEach(defItem => {
+    if (defItem && defItem.builtin && defItem.id && !byId.has(defItem.id)) {
+      currentArray.push({ ...defItem });
+    }
+  });
+  return currentArray;
+}
+
 const configUtils = {
   async getConfig() {
     const data = await chrome.storage.local.get(['config']);
-    return { ...DEFAULT_CONFIG, ...data.config };
+    const stored = data?.config || {};
+
+    // Deep-merge defaults with stored config
+    const merged = deepMerge(DEFAULT_CONFIG, stored);
+
+    // Backward-compatibility: migrate legacy flat handler keys if present
+    // Some versions saved handler config to top-level keys: handler, handlerConfig
+    if (stored.handler && stored.handlerConfig) {
+      const h = stored.handler;
+      if (merged.handlers && merged.handlers[h]) {
+        merged.handlers[h] = deepMerge(merged.handlers[h], stored.handlerConfig);
+      }
+      if (!merged.selectedHandler) {
+        merged.selectedHandler = h;
+      }
+    }
+
+    // Ensure built-in arrays are present (don't remove user customizations)
+    merged.patterns = ensureBuiltinItems(merged.patterns, DEFAULT_CONFIG.patterns);
+    merged.filters = ensureBuiltinItems(merged.filters, DEFAULT_CONFIG.filters);
+
+    // Ensure selected handler is valid
+    if (!merged.selectedHandler || !merged.handlers || !merged.handlers[merged.selectedHandler]) {
+      merged.selectedHandler = 'qbittorrent';
+    }
+
+    return merged;
   },
 
   async setConfig(config) {

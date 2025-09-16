@@ -733,10 +733,10 @@
                 }
             }
         });
-        
-        currentConfig.handler = handler.id;
-        currentConfig.handlerConfig = handlerConfig;
-        await configUtils.setConfig(currentConfig);
+        // Persist using configUtils helpers to ensure proper nested structure
+        await configUtils.updateHandlerConfig(selectedHandler, handlerConfig);
+        await configUtils.setSelectedHandler(selectedHandler);
+        currentConfig = await configUtils.getConfig();
     }
 
     async function savePerformanceSettingsInternal() {

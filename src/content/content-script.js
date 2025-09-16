@@ -105,7 +105,7 @@
       .filter(p => p.enabled)
       .map(p => ({
         ...p,
-        compiledRegex: new RegExp(p.regex, 'gi')
+        compiledRegex: new RegExp(p.regex, 'i')
       }));
 
     // Compile filter patterns for filtering out unwanted torrents
@@ -113,7 +113,7 @@
       .filter(f => f.enabled)
       .map(f => ({
         ...f,
-        compiledRegex: new RegExp(f.regex, 'gi')
+        compiledRegex: new RegExp(f.regex, 'i')
       }));
 
     for (let i = 0; i < allLinks.length && detected.size < config.performance.maxLinksPerScan; i += chunkSize) {
@@ -122,6 +122,8 @@
       chunk.forEach(element => {
         if (element.href) {
           compiledPatterns.forEach(pattern => {
+            // Reset lastIndex defensively in case a pattern was created with 'g'
+            pattern.compiledRegex.lastIndex = 0;
             if (pattern.compiledRegex.test(element.href)) {
               const elementText = element.textContent?.trim() || '';
               
