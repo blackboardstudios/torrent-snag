@@ -7,13 +7,10 @@
   "homepage_url": "https://github.com/blackboardstudios/torrent-snag",
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting",
-    "alarms",
+    "tabs",
     "notifications",
     "contextMenus",
-    "downloads",
-    "management"
+    "downloads"
   ],
   "host_permissions": [
     "http://*/",
