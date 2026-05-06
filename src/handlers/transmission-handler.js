@@ -136,19 +136,27 @@ class TransmissionHandler extends BaseTorrentHandler {
 
   async testConnection() {
     try {
+      console.log('Transmission: Testing connection to', this.baseURL);
+      
       if (!this.isAuthenticated && !(await this.login())) {
+        console.log('Transmission: Login failed');
         return false;
       }
 
       const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + btoa(`${this.username}:${this.password}`)
+        'Content-Type': 'application/json'
       };
+
+      if (this.username) {
+        headers['Authorization'] = 'Basic ' + btoa(`${this.username}:${this.password || ''}`);
+      }
 
       if (this.sessionId) {
         headers['X-Transmission-Session-Id'] = this.sessionId;
       }
 
+      console.log('Transmission: Sending request with headers', Object.keys(headers));
+      
       const response = await fetch(`${this.baseURL}/transmission/rpc`, {
         method: 'POST',
         headers: headers,
@@ -157,6 +165,8 @@ class TransmissionHandler extends BaseTorrentHandler {
         })
       });
 
+      console.log('Transmission: Response status', response.status);
+      
       return response.ok || response.status === 409;
     } catch (error) {
       console.error('Transmission connection test failed:', error);

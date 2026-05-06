@@ -97,6 +97,11 @@
         const lang = currentConfig.language || 'en';
         const langSelector = document.getElementById('language-selector');
         if (langSelector) langSelector.value = lang;
+        // Populate handler selector and config
+        const savedHandler = currentConfig.selectedHandler || 'qbittorrent';
+        document.getElementById('handler-selector').value = savedHandler;
+        updateHandlerDescription();
+        renderHandlerConfig();
     }
 
     async function loadDuplicateStats() {
@@ -372,6 +377,8 @@
         
         button.disabled = true;
         button.textContent = 'Testing...';
+        status.style.display = 'none';
+        status.className = 'status-message';
         
         try {
             const selectedHandler = document.getElementById('handler-selector').value;
@@ -399,11 +406,19 @@
                 throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
             }
             
+            if (!handlerConfig.url) {
+                throw new Error('Server URL is required');
+            }
+            
+            console.log('Options: Testing connection for', selectedHandler, 'with config:', handlerConfig);
+            
             const response = await chrome.runtime.sendMessage({
                 type: 'TEST_CONNECTION',
                 handlerType: selectedHandler,
                 config: handlerConfig
             });
+            
+            console.log('Options: Received response:', response);
             
             if (response.success) {
                 showStatus('success', response.message || 'Connection successful!', status);
@@ -415,6 +430,7 @@
                 showStatus('error', errorMessage, status);
             }
         } catch (error) {
+            console.error('Options: Test connection error:', error);
             showStatus('error', `Connection failed: ${error.message}`, status);
         } finally {
             button.disabled = false;

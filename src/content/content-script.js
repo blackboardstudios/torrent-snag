@@ -15,7 +15,7 @@
   async function initializeContentScript() {
     try {
       config = await configUtils.getConfig();
-      storageKey = `detectedLinks_${getTabId()}`;
+      storageKey = getStorageKey();
       await loadFromStorage();
       setupMutationObserver();
       await scanPage();
@@ -150,26 +150,27 @@
       
       chunk.forEach(element => {
         if (element.href) {
+          const href = element.href;
+          
           compiledPatterns.forEach(pattern => {
             // Reset lastIndex defensively in case a pattern was created with 'g'
             pattern.compiledRegex.lastIndex = 0;
-            if (pattern.compiledRegex.test(element.href)) {
+            if (pattern.compiledRegex.test(href)) {
               const elementText = element.textContent?.trim() || '';
               
               // Check if any filter matches the link text or URL
               const shouldSkip = compiledFilters.some(filter => {
                 filter.compiledRegex.lastIndex = 0; // Reset regex state
-                return filter.compiledRegex.test(elementText) || filter.compiledRegex.test(element.href);
+                return filter.compiledRegex.test(elementText) || filter.compiledRegex.test(href);
               });
               
               if (!shouldSkip) {
                 detected.add({
-                  url: element.href,
+                  url: href,
                   patternId: pattern.id,
                   elementText: elementText,
                   timestamp: new Date().toISOString()
                 });
-              } else {
               }
             }
           });
@@ -193,7 +194,8 @@
         // Check if extension context is still valid
         if (!chrome.runtime?.id) {
           console.warn('Torrent Snag: Extension context invalidated, skipping hash generation');
-          return links; // Return all links without duplicate checking
+          newLinks.push({ ...link, hash: null });
+          continue;
         }
         
         // Check if hashUtils is available
@@ -220,11 +222,11 @@
         // If extension context is invalidated, just include the link without hash checking
         if (error.message?.includes('Extension context invalidated')) {
           console.warn('Torrent Snag: Extension context invalidated, including link without duplicate check:', link.url);
-          newLinks.push(link);
+          newLinks.push({ ...link, hash: null });
         } else {
           console.error('Torrent Snag: Failed to generate hash for:', link.url, error);
           // Include link anyway to avoid losing it
-          newLinks.push(link);
+          newLinks.push({ ...link, hash: null });
         }
       }
     }

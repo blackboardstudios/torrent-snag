@@ -206,12 +206,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
   }
 });
 
-// Alarm handling
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === 'duplicateCleanup') {
-    await cleanupDuplicateTracking();
-  }
-});
+
 
 // Core functions
 async function initializeDefaultConfig() {
@@ -264,8 +259,8 @@ async function initializeDefaultConfig() {
       {
         id: 'html-torrent-downloads',
         name: 'HTML Torrent Downloads',
-        regex: 'https?://[^\\s]*(?:/torrents?/download/|/download/[^\\s]*\\.html|/torrent/[^\\s]*\\.html|[?&]action=download)',
-        enabled: true,
+        regex: 'https?://[^\\s]*\\.torrent(?:\\?[^\\s]*)?',
+        enabled: false,
         builtin: true
       }
     ],
@@ -280,14 +275,14 @@ async function initializeDefaultConfig() {
         id: 'skip-greatest-hits',
         name: 'Skip Greatest Hits',
         regex: '\\b(greatest|hits)\\b',
-        enabled: true,
+        enabled: false,
         builtin: true
       },
       {
         id: 'skip-live-albums',
         name: 'Skip Live Albums',
         regex: '\\b(live|concert)\\b',
-        enabled: true,
+        enabled: false,
         builtin: true
       }
     ],

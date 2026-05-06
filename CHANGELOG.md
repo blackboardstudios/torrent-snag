@@ -5,7 +5,7 @@ All notable changes to Torrent Snag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] [UNRELEASED]
 
 ### Added
 - Test infrastructure with Jest (15 passing tests for hash utilities and constants)
@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed duplicate `generateHash` function from background script (now imported from `utils/hash.js`)
 - Dynamic handler name in popup send button (previously hardcoded to "qBittorrent")
 - Content script memory/storage synchronization issue (added `loadFromStorage()`/`saveToStorage()`)
+- Transmission handler no longer requires username/password (auth is optional)
+- Removed unused `chrome.alarms` code causing service worker registration failures
+- Options page now loads user's saved handler selection on page load
+- Fixed torrent detection pattern matching too many URLs (removed overly broad `html-torrent-downloads` pattern)
+- Default filters now disabled but available for users to enable if needed
+- Fixed regex lastIndex bug in content script detection loop
 
 ### Changed
 - Replaced magic strings with centralized constants across all scripts
