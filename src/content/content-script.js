@@ -7,6 +7,7 @@
   let isScanning = false;
   let scanDebounceTimer = null;
   let currentUrl = window.location.href;
+  let storageKey = null;
 
   // Initialize
   await initializeContentScript();
@@ -14,10 +15,37 @@
   async function initializeContentScript() {
     try {
       config = await configUtils.getConfig();
+      storageKey = `detectedLinks_${getTabId()}`;
+      await loadFromStorage();
       setupMutationObserver();
       await scanPage();
     } catch (error) {
       console.error('Torrent Snag: Failed to initialize:', error);
+    }
+  }
+
+  async function loadFromStorage() {
+    try {
+      const stored = await chrome.storage.local.get([storageKey]);
+      if (stored[storageKey] && Array.isArray(stored[storageKey])) {
+        detectedLinks = new Set(stored[storageKey].map(link => ({ ...link })));
+      }
+    } catch (error) {
+      console.warn('Torrent Snag: Failed to load from storage:', error);
+    }
+  }
+
+  async function saveToStorage() {
+    try {
+      if (!chrome.runtime?.id) return;
+      const linkArray = Array.from(detectedLinks);
+      await chrome.storage.local.set({ [storageKey]: linkArray });
+    } catch (error) {
+      if (error.message?.includes('Extension context invalidated') || !chrome.runtime?.id) {
+        console.warn('Torrent Snag: Extension context invalidated during storage update');
+      } else {
+        console.error('Torrent Snag: Failed to save to storage:', error);
+      }
     }
   }
 
@@ -66,6 +94,7 @@
     if (window.location.href !== currentUrl) {
       detectedLinks.clear();
       currentUrl = window.location.href;
+      storageKey = `detectedLinks_${getTabId()}`;
     }
     
     isScanning = true;
@@ -205,22 +234,16 @@
 
   async function updateBadgeAndStorage() {
     try {
-      // Check if extension context is still valid
       if (!chrome.runtime?.id) {
         return;
       }
       
-      const linkArray = Array.from(detectedLinks);
-      const count = linkArray.length;
+      const count = detectedLinks.size;
       
-      // Store detected links for this tab
-      await chrome.storage.local.set({
-        [`detectedLinks_${getTabId()}`]: linkArray
-      });
+      await saveToStorage();
       
-      // Send message to background script to update badge
       chrome.runtime.sendMessage({
-        type: 'UPDATE_BADGE',
+        type: MESSAGE_TYPES.UPDATE_BADGE,
         count: count,
         tabId: getTabId()
       });
@@ -243,42 +266,41 @@
   // Listen for messages from background script
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.type) {
-      case 'GET_DETECTED_LINKS':
+      case MESSAGE_TYPES.GET_DETECTED_LINKS:
         sendResponse({
           links: Array.from(detectedLinks),
           count: detectedLinks.size
         });
         break;
         
-      case 'CLEAR_DETECTED_LINKS':
+      case MESSAGE_TYPES.CLEAR_DETECTED_LINKS:
         detectedLinks.clear();
-        updateBadgeAndStorage();
+        saveToStorage();
         sendResponse({ success: true });
         break;
         
-      case 'REMOVE_DETECTED_LINK':
-        // Remove specific link from detected links
+      case MESSAGE_TYPES.REMOVE_DETECTED_LINK:
         const urlToRemove = message.url;
         const linkToRemove = Array.from(detectedLinks).find(link => link.url === urlToRemove);
         if (linkToRemove) {
           detectedLinks.delete(linkToRemove);
-          updateBadgeAndStorage();
+          saveToStorage();
           sendResponse({ success: true });
         } else {
           sendResponse({ success: false, error: 'Link not found' });
         }
         break;
         
-      case 'RESCAN_PAGE':
+      case MESSAGE_TYPES.RESCAN_PAGE:
         scanPage().then(() => {
           sendResponse({ success: true });
         });
-        return true; // Indicates async response
+        return true;
         
-      case 'CONFIG_UPDATED':
+      case MESSAGE_TYPES.CONFIG_UPDATED:
         configUtils.getConfig().then(newConfig => {
           config = newConfig;
-          scanPage(); // Rescan with new patterns
+          scanPage();
         });
         break;
     }

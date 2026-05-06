@@ -11,6 +11,8 @@ importScripts('../handlers/handler-factory.js');
 
 // Import utilities
 importScripts('../utils/config.js');
+importScripts('../utils/hash.js');
+importScripts('../utils/constants.js');
 importScripts('../utils/context-menu.js');
 
 // Service worker state management
@@ -24,7 +26,7 @@ const serviceWorkerState = {
     
     try {
       // Restore critical state from storage
-      const data = await chrome.storage.local.get(['config', 'duplicateTracking']);
+      const data = await chrome.storage.local.get([STORAGE_KEYS.CONFIG, STORAGE_KEYS.DUPLICATE_TRACKING]);
       // Use merged config to avoid partial state issues
       try {
         this.config = await configUtils.getConfig();
@@ -109,7 +111,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
   // Only initialize default config on fresh install, or if missing
   try {
-    const { config } = await chrome.storage.local.get(['config']);
+    const { config } = await chrome.storage.local.get([STORAGE_KEYS.CONFIG]);
     const isFreshInstall = details?.reason === 'install';
     if (isFreshInstall || !config) {
       await initializeDefaultConfig();
@@ -138,11 +140,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   serviceWorkerState.updateActivity();
   
   switch (message.type) {
-    case 'UPDATE_BADGE':
+    case MESSAGE_TYPES.UPDATE_BADGE:
       badgeManager.updateBadge(sender.tab?.id, message.count);
       break;
       
-    case 'SEND_TORRENTS':
+    case MESSAGE_TYPES.SEND_TORRENTS:
       // Handle both old format (links array) and new format (torrents array with labels)
       if (message.torrents && Array.isArray(message.torrents)) {
         // New format with labels
@@ -161,20 +163,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       return true; // Indicates async response
       
-    case 'TEST_CONNECTION':
+    case MESSAGE_TYPES.TEST_CONNECTION:
       testHandlerConnection(message.handlerType, message.config)
         .then(sendResponse)
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
       
-    case 'OPEN_REVIEW_POPUP':
-      // Open the review popup window
+    case MESSAGE_TYPES.OPEN_REVIEW_POPUP:
       openReviewPopup(message.tabId);
       sendResponse({ success: true });
       break;
       
-    case 'HANDLER_CONFIG_CHANGED':
-      // Update context menus when handler configuration changes
+    case MESSAGE_TYPES.HANDLER_CONFIG_CHANGED:
       contextMenuUtils.updateContextMenus();
       sendResponse({ success: true });
       break;
@@ -216,7 +216,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 // Core functions
 async function initializeDefaultConfig() {
   // Do not overwrite existing user configuration
-  const existing = await chrome.storage.local.get(['config']);
+  const existing = await chrome.storage.local.get([STORAGE_KEYS.CONFIG]);
   if (existing && existing.config) {
     return;
   }
@@ -361,8 +361,8 @@ async function sendTorrentsToHandler(urls, tabId, labels = []) {
     // Mark torrents as sent
     for (const url of urls) {
       try {
-        const hash = await generateHash(url);
-        await addHashToTracking(hash);
+        const hash = await hashUtils.generateHash(url);
+        await duplicateTracker.addHash(hash);
       } catch (error) {
         console.error('Torrent Snag: Failed to track hash for:', url, error);
       }
@@ -451,40 +451,13 @@ async function testHandlerConnection(handlerType, handlerConfig) {
   }
 }
 
-async function generateHash(url) {
-  if (url.startsWith('magnet:')) {
-    const btihMatch = url.match(/btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})/i);
-    if (btihMatch) {
-      return btihMatch[1].toLowerCase();
-    }
-  }
-  
-  const encoder = new TextEncoder();
-  const data = encoder.encode(url.toLowerCase().split('?')[0]);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
-async function addHashToTracking(hash) {
-  const data = await chrome.storage.local.get(['duplicateTracking']);
-  const tracking = data.duplicateTracking || { 
-    sentHashes: {}, 
-    lastCleared: new Date().toISOString(), 
-    maxEntries: 10000 
-  };
-  
-  tracking.sentHashes[hash] = {
-    timestamp: new Date().toISOString(),
-    count: (tracking.sentHashes[hash]?.count || 0) + 1
-  };
-  
-  await chrome.storage.local.set({ duplicateTracking: tracking });
-}
+
+
 
 async function cleanupDuplicateTracking() {
   try {
-    const data = await chrome.storage.local.get(['duplicateTracking']);
+    const data = await chrome.storage.local.get([STORAGE_KEYS.DUPLICATE_TRACKING]);
     const tracking = data.duplicateTracking;
     
     if (!tracking?.sentHashes) return;

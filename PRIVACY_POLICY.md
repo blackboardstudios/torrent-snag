@@ -1,7 +1,7 @@
 # Privacy Policy for Torrent Snag
 
 **Published by: Blackboard Studios**
-**Last Updated: July 26, 2025**
+**Last Updated: May 6, 2026**
 
 ## Information We Collect
 
@@ -55,7 +55,7 @@ We may update this privacy policy to reflect changes in our practices or for leg
 For privacy-related questions or concerns, please contact Blackboard Studios through:
 - GitHub Issues: [https://github.com/blackboardstudios/torrent-snag/issues](https://github.com/blackboardstudios/torrent-snag/issues)
 - GitHub Discussions: [https://github.com/blackboardstudios/torrent-snag/discussions](https://github.com/blackboardstudios/torrent-snag/discussions)
-- Email: privacy@blackboardstudios.com
+- Email: privacy@blackboardstudios.net
 
 ## Your Rights
 
@@ -67,6 +67,6 @@ You have the right to:
 
 ---
 
-**© 2025 Blackboard Studios. All rights reserved.**
+**© 2026 Blackboard Studios. All rights reserved.**
 
 This privacy policy is effective as of July 26, 2025.

@@ -845,7 +845,7 @@
             // Notify content scripts of pattern changes
             chrome.tabs.query({}, (tabs) => {
                 tabs.forEach(tab => {
-                    chrome.tabs.sendMessage(tab.id, { type: 'CONFIG_UPDATED' }).catch(() => {
+                    chrome.tabs.sendMessage(tab.id, { type: MESSAGE_TYPES.CONFIG_UPDATED }).catch(() => {
                         // Ignore errors for tabs that don't have content scripts
                     });
                 });
@@ -921,7 +921,7 @@
             // Notify content scripts of pattern changes
             chrome.tabs.query({}, (tabs) => {
                 tabs.forEach(tab => {
-                    chrome.tabs.sendMessage(tab.id, { type: 'CONFIG_UPDATED' }).catch(() => {
+                    chrome.tabs.sendMessage(tab.id, { type: MESSAGE_TYPES.CONFIG_UPDATED }).catch(() => {
                         // Ignore errors for tabs that don't have content scripts
                     });
                 });
@@ -977,7 +977,7 @@
                 // Notify content scripts of pattern changes
                 chrome.tabs.query({}, (tabs) => {
                     tabs.forEach(tab => {
-                        chrome.tabs.sendMessage(tab.id, { type: 'CONFIG_UPDATED' }).catch(() => {
+                        chrome.tabs.sendMessage(tab.id, { type: MESSAGE_TYPES.CONFIG_UPDATED }).catch(() => {
                             // Ignore errors for tabs that don't have content scripts
                         });
                     });
@@ -1011,7 +1011,7 @@
             // Notify content scripts of pattern changes
             chrome.tabs.query({}, (tabs) => {
                 tabs.forEach(tab => {
-                    chrome.tabs.sendMessage(tab.id, { type: 'CONFIG_UPDATED' }).catch(() => {
+                    chrome.tabs.sendMessage(tab.id, { type: MESSAGE_TYPES.CONFIG_UPDATED }).catch(() => {
                         // Ignore errors for tabs that don't have content scripts
                     });
                 });
@@ -1165,7 +1165,7 @@
             // Notify content scripts of filter changes
             chrome.tabs.query({}, (tabs) => {
                 tabs.forEach(tab => {
-                    chrome.tabs.sendMessage(tab.id, { type: 'CONFIG_UPDATED' }).catch(() => {
+                    chrome.tabs.sendMessage(tab.id, { type: MESSAGE_TYPES.CONFIG_UPDATED }).catch(() => {
                         // Ignore errors for tabs that don't have content scripts
                     });
                 });
@@ -1191,7 +1191,7 @@
                 // Notify content scripts of filter changes
                 chrome.tabs.query({}, (tabs) => {
                     tabs.forEach(tab => {
-                        chrome.tabs.sendMessage(tab.id, { type: 'CONFIG_UPDATED' }).catch(() => {
+                        chrome.tabs.sendMessage(tab.id, { type: MESSAGE_TYPES.CONFIG_UPDATED }).catch(() => {
                             // Ignore errors for tabs that don't have content scripts
                         });
                     });
@@ -1215,7 +1215,7 @@
             // Notify content scripts of filter changes
             chrome.tabs.query({}, (tabs) => {
                 tabs.forEach(tab => {
-                    chrome.tabs.sendMessage(tab.id, { type: 'CONFIG_UPDATED' }).catch(() => {
+                    chrome.tabs.sendMessage(tab.id, { type: MESSAGE_TYPES.CONFIG_UPDATED }).catch(() => {
                         // Ignore errors for tabs that don't have content scripts
                     });
                 });
@@ -1283,7 +1283,7 @@
                 // Notify content scripts of changes
                 chrome.tabs.query({}, (tabs) => {
                     tabs.forEach(tab => {
-                        chrome.tabs.sendMessage(tab.id, { type: 'CONFIG_UPDATED' }).catch(() => {
+                        chrome.tabs.sendMessage(tab.id, { type: MESSAGE_TYPES.CONFIG_UPDATED }).catch(() => {
                             // Ignore errors for tabs that don't have content scripts
                         });
                     });
