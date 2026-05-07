@@ -3,10 +3,8 @@
 # Chrome Extension Build Script for Torrent Snag
 echo "🔨 Building Torrent Snag Chrome Extension..."
 
-# Clean and build
-rm -rf dist/
-mkdir -p dist
-cp -r src/* dist/
+# Clean and build using the same esbuild pipeline as npm run build.
+npm run build
 
 # Validate basic files exist
 if [ -f "dist/manifest.json" ] && [ -f "dist/background/background.js" ]; then

@@ -32,7 +32,7 @@ class HandlerFactory {
         name: 'Transmission',
         description: 'Send torrents to Transmission daemon',
         requiresAuth: false,
-        fields: ['url', 'defaultLabel']
+        fields: ['url', 'username', 'password', 'defaultLabel']
       },
       {
         id: 'deluge',

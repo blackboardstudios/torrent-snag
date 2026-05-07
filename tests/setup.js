@@ -64,6 +64,8 @@ global.TextEncoder = class {
   }
 };
 
+global.TextDecoder = require('util').TextDecoder;
+
 global.crypto = {
   subtle: {
     digest: jest.fn().mockResolvedValue(

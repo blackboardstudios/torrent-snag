@@ -423,6 +423,7 @@ async function sendSelectedTorrents() {
         // Send to background script and close popup immediately
         chrome.runtime.sendMessage({
             type: 'SEND_TORRENTS',
+            tabId: targetTabId,
             torrents: selectedData
         });
         

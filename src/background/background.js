@@ -146,16 +146,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       
     case MESSAGE_TYPES.SEND_TORRENTS:
       // Handle both old format (links array) and new format (torrents array with labels)
+      const targetTabId = message.tabId || sender.tab?.id;
       if (message.torrents && Array.isArray(message.torrents)) {
         // New format with labels
         const urls = message.torrents.map(t => t.url);
         const labels = message.torrents.map(t => t.label || '');
-        sendTorrentsToHandler(urls, sender.tab?.id, labels)
+        sendTorrentsToHandler(urls, targetTabId, labels)
           .then(sendResponse)
           .catch(error => sendResponse({ success: false, error: error.message }));
       } else if (message.links && Array.isArray(message.links)) {
         // Old format for backward compatibility
-        sendTorrentsToHandler(message.links, sender.tab?.id)
+        sendTorrentsToHandler(message.links, targetTabId)
           .then(sendResponse)
           .catch(error => sendResponse({ success: false, error: error.message }));
       } else {
@@ -216,82 +217,8 @@ async function initializeDefaultConfig() {
     return;
   }
 
-  const DEFAULT_CONFIG = {
-    selectedHandler: 'qbittorrent',
-    language: 'en',
-    handlers: {
-      qbittorrent: {
-        url: 'http://localhost:8080',
-        username: '',
-        password: '',
-        timeout: 30000
-      },
-      transmission: {
-        url: 'http://localhost:9091',
-        username: '',
-        password: '',
-        timeout: 30000
-      },
-      deluge: {
-        url: 'http://localhost:8112',
-        password: '',
-        timeout: 30000
-      },
-      download: {
-        timeout: 30000
-      }
-    },
-    patterns: [
-      {
-        id: 'magnet-links',
-        name: 'Magnet Links',
-        regex: 'magnet:\\?xt=urn:btih:[a-fA-F0-9]{40}[^\\s]*',
-        enabled: true,
-        builtin: true
-      },
-      {
-        id: 'torrent-files',
-        name: 'Torrent Files',
-        regex: 'https?://[^\\s]*\\.torrent(?:\\?[^\\s]*)?',
-        enabled: true,
-        builtin: true
-      },
-      {
-        id: 'html-torrent-downloads',
-        name: 'HTML Torrent Downloads',
-        regex: 'https?://[^\\s]*\\.torrent(?:\\?[^\\s]*)?',
-        enabled: false,
-        builtin: true
-      }
-    ],
-    performance: {
-      maxLinksPerScan: 1000,
-      chunkSize: 100,
-      debounceDelay: 500,
-      maxDuplicateEntries: 10000
-    },
-    filters: [
-      {
-        id: 'skip-greatest-hits',
-        name: 'Skip Greatest Hits',
-        regex: '\\b(greatest|hits)\\b',
-        enabled: false,
-        builtin: true
-      },
-      {
-        id: 'skip-live-albums',
-        name: 'Skip Live Albums',
-        regex: '\\b(live|concert)\\b',
-        enabled: false,
-        builtin: true
-      }
-    ],
-    theme: {
-      forceDarkMode: false
-    }
-  };
-  
-  await chrome.storage.local.set({ config: DEFAULT_CONFIG });
+  const defaultConfig = await configUtils.getConfig();
+  await configUtils.setConfig(defaultConfig);
 }
 
 async function openReviewPopup(tabId) {
@@ -316,7 +243,7 @@ async function openReviewPopup(tabId) {
     // Fallback: show notification
     chrome.notifications.create({
       type: 'basic',
-      iconUrl: 'icons/icon-48.png',
+      iconUrl: 'assets/icons/icon-48.png',
       title: 'Torrent Snag',
       message: 'Failed to open review window. Please try again.'
     });
@@ -331,7 +258,7 @@ async function handleActionClick(tab) {
     if (!response || !response.links || response.links.length === 0) {
       chrome.notifications.create({
         type: 'basic',
-        iconUrl: 'icons/icon-48.png',
+        iconUrl: 'assets/icons/icon-48.png',
         title: 'Torrent Snag',
         message: 'No new torrents found on this page'
       });
@@ -380,7 +307,7 @@ async function sendTorrentsToHandler(urls, tabId, labels = []) {
     
     chrome.notifications.create({
       type: 'basic',
-      iconUrl: 'icons/icon-48.png',
+      iconUrl: 'assets/icons/icon-48.png',
       title: 'Torrent Snag',
       message: `Successfully processed ${result.count} torrents with ${handlerName}`
     });

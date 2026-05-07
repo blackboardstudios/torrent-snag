@@ -241,6 +241,13 @@
         }
     }
 
+    function createFormText(text) {
+        const small = document.createElement('small');
+        small.className = 'form-text';
+        small.textContent = text;
+        return small;
+    }
+
     function renderHandlerConfig() {
         const selectedHandler = document.getElementById('handler-selector').value;
         const handler = availableHandlers.find(h => h.id === selectedHandler);
@@ -253,7 +260,9 @@
         content.innerHTML = '';
         
         if (handler.fields.length === 0) {
-            content.innerHTML = '<p>No configuration required for this handler.</p>';
+            const message = document.createElement('p');
+            message.textContent = 'No configuration required for this handler.';
+            content.appendChild(message);
             return;
         }
         
@@ -262,38 +271,50 @@
         handler.fields.forEach(field => {
             const formGroup = document.createElement('div');
             formGroup.className = 'form-group';
-            
-            let fieldHtml = '';
+
+            const label = document.createElement('label');
+            const input = document.createElement('input');
+            input.id = `handler-${field}`;
+            input.className = 'form-control';
+            input.value = config[field] || '';
+
             switch (field) {
                 case 'url':
-                    fieldHtml = `
-                        <label for="handler-url">Server URL</label>
-                        <input type="url" id="handler-url" class="form-control" value="${config.url || ''}" placeholder="http://localhost:8080">
-                        <small class="form-text">The URL of your ${handler.name} server</small>
-                    `;
+                    label.htmlFor = input.id;
+                    label.textContent = 'Server URL';
+                    input.type = 'url';
+                    input.placeholder = 'http://localhost:8080';
+                    formGroup.appendChild(label);
+                    formGroup.appendChild(input);
+                    formGroup.appendChild(createFormText(`The URL of your ${handler.name} server`));
                     break;
                 case 'username':
-                    fieldHtml = `
-                        <label for="handler-username">Username</label>
-                        <input type="text" id="handler-username" class="form-control" value="${config.username || ''}" placeholder="admin">
-                    `;
+                    label.htmlFor = input.id;
+                    label.textContent = 'Username';
+                    input.type = 'text';
+                    input.placeholder = 'admin';
+                    formGroup.appendChild(label);
+                    formGroup.appendChild(input);
                     break;
                 case 'password':
-                    fieldHtml = `
-                        <label for="handler-password">Password</label>
-                        <input type="password" id="handler-password" class="form-control" value="${config.password || ''}" placeholder="Password">
-                    `;
+                    label.htmlFor = input.id;
+                    label.textContent = 'Password';
+                    input.type = 'password';
+                    input.placeholder = 'Password';
+                    formGroup.appendChild(label);
+                    formGroup.appendChild(input);
                     break;
                 case 'defaultLabel':
-                    fieldHtml = `
-                        <label for="handler-defaultLabel">Default Label/Category</label>
-                        <input type="text" id="handler-defaultLabel" class="form-control" value="${config.defaultLabel || ''}" placeholder="e.g., Movies, TV Shows">
-                        <small class="form-text">Optional: Default label/category to assign to torrents (leave empty for none)</small>
-                    `;
+                    label.htmlFor = input.id;
+                    label.textContent = 'Default Label/Category';
+                    input.type = 'text';
+                    input.placeholder = 'e.g., Movies, TV Shows';
+                    formGroup.appendChild(label);
+                    formGroup.appendChild(input);
+                    formGroup.appendChild(createFormText('Optional: Default label/category to assign to torrents (leave empty for none)'));
                     break;
             }
             
-            formGroup.innerHTML = fieldHtml;
             content.appendChild(formGroup);
         });
         

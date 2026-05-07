@@ -29,7 +29,7 @@ const DEFAULT_CONFIG = {
     {
       id: 'magnet-links',
       name: 'Magnet Links',
-      regex: 'magnet:\\?xt=urn:btih:[a-fA-F0-9]{40}[^\\s]*',
+      regex: 'magnet:\\?xt=urn:btih:(?:[a-fA-F0-9]{40}|[a-zA-Z2-7]{32})[^\\s]*',
       enabled: true,
       builtin: true
     },
@@ -130,7 +130,7 @@ const configUtils = {
       if (merged.handlers && merged.handlers[h]) {
         merged.handlers[h] = deepMerge(merged.handlers[h], stored.handlerConfig);
       }
-      if (!merged.selectedHandler) {
+      if (!stored.selectedHandler) {
         merged.selectedHandler = h;
       }
     }
