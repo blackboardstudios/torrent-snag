@@ -112,7 +112,7 @@ async function loadTorrents() {
         
         // Get detected torrents from content script
         const response = await chrome.tabs.sendMessage(targetTabId, { 
-            type: 'GET_DETECTED_LINKS' 
+            type: MESSAGE_TYPES.GET_DETECTED_LINKS 
         });
         
         if (!response) {
@@ -362,9 +362,14 @@ function updateSelectionUI() {
     updateCounters();
 }
 
-function updateCounters() {
+async function updateCounters() {
     const totalCount = detectedTorrents.length;
     const selectedCount = selectedTorrents.size;
+    
+    // Get handler name from configuration
+    const config = await configUtils.getConfig();
+    const selectedHandler = config.selectedHandler || 'qbittorrent';
+    const handlerName = (config.handlers?.[selectedHandler]?.name) || selectedHandler;
     
     // Update headers
     document.getElementById('torrents-count').textContent = 
@@ -376,8 +381,8 @@ function updateCounters() {
     const sendBtn = document.getElementById('send-selected-btn');
     sendBtn.disabled = selectedCount === 0;
     sendBtn.textContent = selectedCount === 0 
-        ? 'Send to qBittorrent'
-        : `Send ${selectedCount} to qBittorrent`;
+        ? `Send to ${handlerName}`
+        : `Send ${selectedCount} to ${handlerName}`;
 }
 
 function applyBulkLabel() {
@@ -418,6 +423,7 @@ async function sendSelectedTorrents() {
         // Send to background script and close popup immediately
         chrome.runtime.sendMessage({
             type: 'SEND_TORRENTS',
+            tabId: targetTabId,
             torrents: selectedData
         });
         
@@ -442,7 +448,7 @@ async function refreshPage() {
         }
         
         // Tell content script to rescan
-        await chrome.tabs.sendMessage(targetTabId, { type: 'RESCAN_PAGE' });
+        await chrome.tabs.sendMessage(targetTabId, { type: MESSAGE_TYPES.RESCAN_PAGE });
         
         // Reload torrents
         await loadTorrents();

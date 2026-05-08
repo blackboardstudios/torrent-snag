@@ -31,7 +31,7 @@ class HandlerFactory {
         id: 'transmission',
         name: 'Transmission',
         description: 'Send torrents to Transmission daemon',
-        requiresAuth: true,
+        requiresAuth: false,
         fields: ['url', 'username', 'password', 'defaultLabel']
       },
       {

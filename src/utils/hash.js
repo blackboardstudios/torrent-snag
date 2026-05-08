@@ -109,10 +109,11 @@ const duplicateTracker = {
           .sort((a, b) => new Date(b[1].timestamp) - new Date(a[1].timestamp))
           .slice(0, tracking.maxEntries);
         
-        Object.assign(cleaned, Object.fromEntries(sorted));
+        tracking.sentHashes = Object.fromEntries(sorted);
+      } else {
+        tracking.sentHashes = cleaned;
       }
       
-      tracking.sentHashes = cleaned;
       tracking.lastCleared = new Date().toISOString();
       
       await chrome.storage.local.set({ duplicateTracking: tracking });

@@ -1,0 +1,44 @@
+// Message types for communication between scripts
+const MESSAGE_TYPES = {
+  // Content script -> Background
+  UPDATE_BADGE: 'UPDATE_BADGE',
+  SEND_TORRENTS: 'SEND_TORRENTS',
+  TEST_CONNECTION: 'TEST_CONNECTION',
+  OPEN_REVIEW_POPUP: 'OPEN_REVIEW_POPUP',
+  HANDLER_CONFIG_CHANGED: 'HANDLER_CONFIG_CHANGED',
+
+  // Background -> Content script
+  GET_DETECTED_LINKS: 'GET_DETECTED_LINKS',
+  CLEAR_DETECTED_LINKS: 'CLEAR_DETECTED_LINKS',
+  REMOVE_DETECTED_LINK: 'REMOVE_DETECTED_LINK',
+  RESCAN_PAGE: 'RESCAN_PAGE',
+  CONFIG_UPDATED: 'CONFIG_UPDATED'
+};
+
+// Storage keys
+const STORAGE_KEYS = {
+  CONFIG: 'config',
+  DUPLICATE_TRACKING: 'duplicateTracking',
+  REVIEW_POPUP_TAB_ID: 'reviewPopupTabId',
+  REVIEW_POPUP_WINDOW_ID: 'reviewPopupWindowId',
+  DETECTED_LINKS_PREFIX: 'detectedLinks_'
+};
+
+// Handler types
+const HANDLER_TYPES = {
+  QBITTORRENT: 'qbittorrent',
+  TRANSMISSION: 'transmission',
+  DELUGE: 'deluge',
+  DOWNLOAD: 'download'
+};
+
+// Default values
+const DEFAULTS = {
+  DEBOUNCE_DELAY: 500,
+  CHUNK_SIZE: 100,
+  MAX_LINKS_PER_SCAN: 1000,
+  MAX_DUPLICATE_ENTRIES: 10000,
+  TIMEOUT: 30000,
+  CLEANUP_INTERVAL_DAYS: 30,
+  MAX_ENTRIES_AFTER_CLEANUP: 5000
+};

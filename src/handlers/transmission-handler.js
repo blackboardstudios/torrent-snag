@@ -5,24 +5,57 @@
 class TransmissionHandler extends BaseTorrentHandler {
   constructor(config) {
     super(config);
-    this.baseURL = config.url.replace(/\/$/, '');
-    this.username = config.username;
-    this.password = config.password;
+    this.baseURL = this.normalizeBaseURL(config.url);
+    this.rpcURL = this.getRpcURL(this.baseURL);
+    this.username = config.username || '';
+    this.password = config.password || '';
     this.sessionId = null;
+  }
+
+  normalizeBaseURL(url) {
+    return (url || 'http://localhost:9091').replace(/\/$/, '');
+  }
+
+  getRpcURL(url) {
+    return url.endsWith('/transmission/rpc') ? url : `${url}/transmission/rpc`;
+  }
+
+  buildHeaders() {
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    if (this.username) {
+      headers['Authorization'] = 'Basic ' + btoa(`${this.username}:${this.password || ''}`);
+    }
+
+    if (this.sessionId) {
+      headers['X-Transmission-Session-Id'] = this.sessionId;
+    }
+
+    return headers;
+  }
+
+  async rpcFetch(body, headers = this.buildHeaders()) {
+    try {
+      return await fetch(this.rpcURL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body)
+      });
+    } catch (error) {
+      if (error instanceof TypeError) {
+        throw new Error(`Cannot reach Transmission RPC at ${this.rpcURL}. Verify Transmission is running, Remote/Web access is enabled, and the URL is reachable from Chrome.`);
+      }
+      throw error;
+    }
   }
 
   async login() {
     try {
       // Transmission uses session ID for CSRF protection
-      const response = await fetch(`${this.baseURL}/transmission/rpc`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Basic ' + btoa(`${this.username}:${this.password}`)
-        },
-        body: JSON.stringify({
-          method: 'session-get'
-        })
+      const response = await this.rpcFetch({
+        method: 'session-get'
       });
 
       // Transmission returns 409 with session ID in header
@@ -39,7 +72,7 @@ class TransmissionHandler extends BaseTorrentHandler {
 
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     } catch (error) {
-      console.error('Transmission login failed:', error);
+      console.warn('Transmission login failed:', error);
       if (!this.isTesting) {
         this.showNotification(`Login failed: ${error.message}`, 'error');
       }
@@ -61,14 +94,7 @@ class TransmissionHandler extends BaseTorrentHandler {
         const label = labels[i] || this.config.defaultLabel || '';
         
         try {
-          const headers = {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + btoa(`${this.username}:${this.password}`)
-          };
-
-          if (this.sessionId) {
-            headers['X-Transmission-Session-Id'] = this.sessionId;
-          }
+          const headers = this.buildHeaders();
 
           const body = {
             method: 'torrent-add',
@@ -86,11 +112,7 @@ class TransmissionHandler extends BaseTorrentHandler {
             body.arguments.labels = [label.trim()];
           }
 
-          let response = await fetch(`${this.baseURL}/transmission/rpc`, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(body)
-          });
+          let response = await this.rpcFetch(body, headers);
 
           // If session ID missing/stale, capture it and retry once
           if (response.status === 409) {
@@ -98,11 +120,7 @@ class TransmissionHandler extends BaseTorrentHandler {
             if (newSessionId) {
               this.sessionId = newSessionId;
               headers['X-Transmission-Session-Id'] = newSessionId;
-              response = await fetch(`${this.baseURL}/transmission/rpc`, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify(body)
-              });
+              response = await this.rpcFetch(body, headers);
             }
           }
 
@@ -136,27 +154,25 @@ class TransmissionHandler extends BaseTorrentHandler {
 
   async testConnection() {
     try {
+      console.log('Transmission: Testing connection to', this.baseURL);
+      
       if (!this.isAuthenticated && !(await this.login())) {
+        console.log('Transmission: Login failed');
         return false;
       }
 
       const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + btoa(`${this.username}:${this.password}`)
+        ...this.buildHeaders()
       };
 
-      if (this.sessionId) {
-        headers['X-Transmission-Session-Id'] = this.sessionId;
-      }
+      console.log('Transmission: Sending request with headers', Object.keys(headers));
+      
+      const response = await this.rpcFetch({
+        method: 'session-get'
+      }, headers);
 
-      const response = await fetch(`${this.baseURL}/transmission/rpc`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          method: 'session-get'
-        })
-      });
-
+      console.log('Transmission: Response status', response.status);
+      
       return response.ok || response.status === 409;
     } catch (error) {
       console.error('Transmission connection test failed:', error);
