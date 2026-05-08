@@ -37,6 +37,6 @@
 
 ## Version & Release
 
-- Current version: `1.1.0` (UNRELEASED per CHANGELOG.md). Version appears in both `package.json` and `src/manifest.json` — update both when bumping.
+- Current version: `1.2.0` (UNRELEASED per CHANGELOG.md). Version appears in both `package.json` and `src/manifest.json` — update both when bumping.
 - CHANGELOG.md has a duplicated header block (lines 1-6 repeated at lines 29-34) — a known artifact.
 - No CI/CD workflows exist. No pre-commit hooks.

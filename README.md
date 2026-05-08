@@ -7,7 +7,7 @@ Chrome extension for detecting torrent and magnet links on web pages and sending
 ## Current Status
 
 - Manifest V3 Chrome extension.
-- Current source version: `1.1.0` in [package.json](package.json) and [src/manifest.json](src/manifest.json).
+- Current source version: `1.2.0` in [package.json](package.json) and [src/manifest.json](src/manifest.json).
 - Supports qBittorrent, Transmission, Deluge, and direct download handling.
 - Includes 10 locale folders in `src/_locales/`: `de`, `en`, `es`, `fr`, `it`, `ja`, `pt`, `ru`, `tr`, `zh_CN`.
 - No CI workflow is configured in this repository.
