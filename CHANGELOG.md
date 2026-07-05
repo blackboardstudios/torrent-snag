@@ -5,7 +5,7 @@ All notable changes to Torrent Snag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] [Unreleased]
+## [1.3.0] 2026-07-05
 
 ### Fixed
 - Prevented failed or partially failed torrent sends from being recorded as sent, removed from review state, hidden from the badge, or reported as full success.

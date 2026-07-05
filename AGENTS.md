@@ -37,6 +37,6 @@
 
 ## Version & Release
 
-- Current package/manifest version: `1.2.0`; next unreleased changes are tracked under `1.3.0` in CHANGELOG.md. Version appears in both `package.json` and `src/manifest.json` — update both when bumping.
-- CHANGELOG.md should keep new entries under the existing unpublished `1.3.0` section until that release is tagged.
+- Current package/manifest version: `1.3.0`. Version appears in both `package.json` and `src/manifest.json` — update both when bumping.
+- CHANGELOG.md should keep new entries under the matching version section, or a new unpublished section when development resumes after `1.3.0`.
 - CI workflows exist at `.github/workflows/ci.yml` for lint, tests, and production build checks. No pre-commit hooks.

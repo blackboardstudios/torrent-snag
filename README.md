@@ -7,8 +7,8 @@ Chrome Manifest V3 extension for detecting torrent and magnet links on web pages
 ## Current Status
 
 - Manifest V3 Chrome extension.
-- Current package/manifest version: `1.2.0` in [package.json](package.json) and [src/manifest.json](src/manifest.json).
-- Next unreleased changes are tracked under `1.3.0` in [CHANGELOG.md](CHANGELOG.md).
+- Current package/manifest version: `1.3.0` in [package.json](package.json) and [src/manifest.json](src/manifest.json).
+- Release notes are tracked in [CHANGELOG.md](CHANGELOG.md).
 - Supports qBittorrent, Transmission, Deluge, SwarmOtter, and generic Chrome download handling.
 - Includes 10 locale folders in `src/_locales/`: `de`, `en`, `es`, `fr`, `it`, `ja`, `pt`, `ru`, `tr`, `zh_CN`.
 - Includes Jest tests, ESLint, and a GitHub Actions CI workflow for lint, tests, and production build.
