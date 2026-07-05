@@ -6,25 +6,139 @@
   let detectedLinks = new Set();
   let isScanning = false;
   let scanDebounceTimer = null;
+  let initializationPromise = null;
+  let isInitialized = false;
   let currentUrl = window.location.href;
   let storageKey = null;
+  let storageScopeId = null;
+  let isTabScoped = false;
   let mutationObserver = null;
   let extensionContextInvalidated = false;
+  const detectedLinksPrefix = typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS?.DETECTED_LINKS_PREFIX
+    ? STORAGE_KEYS.DETECTED_LINKS_PREFIX
+    : 'detectedLinks_';
 
   async function initializeContentScript() {
+    if (initializationPromise) {
+      return initializationPromise;
+    }
+
+    initializationPromise = initialize();
+    return initializationPromise;
+  }
+
+  async function scanWhenReady() {
+    try {
+      await initializationPromise;
+      if (!isInitialized || extensionContextInvalidated) {
+        return;
+      }
+
+      return scanPage();
+    } catch (error) {
+      if (isExtensionContextError(error) || !isExtensionContextValid()) {
+        markExtensionContextInvalidated();
+        return;
+      }
+      throw error;
+    }
+  }
+
+  async function getStorageScopeId() {
+    try {
+      const response = await chrome.runtime.sendMessage({ type: MESSAGE_TYPES.GET_TAB_ID });
+      const tabId = response?.tabId;
+
+      if (typeof tabId === 'number' && Number.isInteger(tabId)) {
+        return { scopeId: `tab_${tabId}`, isTabScoped: true };
+      }
+    } catch (error) {
+      if (isExtensionContextError(error)) {
+        markExtensionContextInvalidated();
+      }
+    }
+
+    const fallbackScopeId = await computeUrlFallbackScopeId(window.location.href);
+    return { scopeId: `url_${fallbackScopeId}`, isTabScoped: false };
+  }
+
+  async function computeUrlFallbackScopeId(url) {
+    const encoder = new TextEncoder();
+    const encodedUrl = encoder.encode(url);
+    const subtle = (typeof crypto !== 'undefined' && crypto.subtle) || (typeof window !== 'undefined' && window.crypto?.subtle);
+    const hashBuffer = await subtle.digest('SHA-256', encodedUrl);
+    const hashArray = new Uint8Array(hashBuffer);
+    return Array.from(hashArray).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  }
+
+  function getStorageKey() {
+    if (!storageScopeId) {
+      return null;
+    }
+
+    return `${detectedLinksPrefix}${storageScopeId}`;
+  }
+
+  async function removeStorageKey(keyToRemove) {
+    if (!keyToRemove || !isExtensionContextValid()) {
+      return;
+    }
+
+    try {
+      await chrome.storage.local.remove(keyToRemove);
+    } catch (error) {
+      if (isExtensionContextError(error) || !isExtensionContextValid()) {
+        markExtensionContextInvalidated();
+      }
+    }
+  }
+
+  async function clearCurrentStorage() {
+    detectedLinks.clear();
+    await removeStorageKey(storageKey);
+  }
+
+  async function maybeUpdateStorageScopeOnNavigation() {
+    const previousStorageKey = storageKey;
+
+    detectedLinks.clear();
+    currentUrl = window.location.href;
+
+    if (!isTabScoped) {
+      const fallbackScopeId = `url_${await computeUrlFallbackScopeId(window.location.href)}`;
+      storageScopeId = fallbackScopeId;
+      storageKey = getStorageKey();
+    }
+
+    await removeStorageKey(previousStorageKey);
+    await loadFromStorage();
+  }
+
+  async function initialize() {
     try {
       config = await configUtils.getConfig();
+      const storageScope = await getStorageScopeId();
+      storageScopeId = storageScope.scopeId;
+      isTabScoped = storageScope.isTabScoped;
       storageKey = getStorageKey();
       await loadFromStorage();
       setupMutationObserver();
       await scanPage();
+      isInitialized = true;
     } catch (error) {
+      if (isExtensionContextError(error) || !isExtensionContextValid()) {
+        markExtensionContextInvalidated();
+        return;
+      }
       console.error('Torrent Snag: Failed to initialize:', error);
     }
   }
 
   async function loadFromStorage() {
     try {
+      if (!storageKey) {
+        return;
+      }
       const stored = await chrome.storage.local.get([storageKey]);
       if (stored[storageKey] && Array.isArray(stored[storageKey])) {
         detectedLinks = new Set(stored[storageKey].map(link => ({ ...link })));
@@ -41,7 +155,16 @@
   async function saveToStorage() {
     try {
       if (!isExtensionContextValid()) return;
+      if (!storageKey) {
+        return;
+      }
+
       const linkArray = Array.from(detectedLinks);
+      if (linkArray.length === 0) {
+        await chrome.storage.local.remove(storageKey);
+        return;
+      }
+
       await chrome.storage.local.set({ [storageKey]: linkArray });
     } catch (error) {
       if (isExtensionContextError(error) || !isExtensionContextValid()) {
@@ -81,19 +204,20 @@
   }
 
   function debouncedScan() {
-    if (extensionContextInvalidated) return;
+    if (extensionContextInvalidated || !isInitialized || !config) return;
 
     if (scanDebounceTimer) {
       clearTimeout(scanDebounceTimer);
     }
     
     scanDebounceTimer = setTimeout(() => {
-      scanPage();
+      scanWhenReady();
     }, config.performance.debounceDelay);
   }
 
   async function scanPage() {
     if (isScanning || extensionContextInvalidated) return;
+    if (!config) return;
     if (!isExtensionContextValid()) {
       markExtensionContextInvalidated();
       return;
@@ -101,9 +225,15 @@
 
     // Check if URL changed (for SPA navigation)
     if (window.location.href !== currentUrl) {
-      detectedLinks.clear();
-      currentUrl = window.location.href;
-      storageKey = getStorageKey();
+      try {
+        await maybeUpdateStorageScopeOnNavigation();
+      } catch (error) {
+        if (isExtensionContextError(error) || !isExtensionContextValid()) {
+          markExtensionContextInvalidated();
+          return;
+        }
+        console.warn('Torrent Snag: Failed to refresh storage scope for navigation:', error);
+      }
     }
 
     isScanning = true;
@@ -396,8 +526,7 @@
       
       chrome.runtime.sendMessage({
         type: MESSAGE_TYPES.UPDATE_BADGE,
-        count: count,
-        tabId: getTabId()
+        count: count
       });
     } catch (error) {
       if (isExtensionContextError(error) || !isExtensionContextValid()) {
@@ -433,16 +562,6 @@
     }
   }
 
-  function getStorageKey() {
-    return `detectedLinks_${getTabId()}`;
-  }
-
-  function getTabId() {
-    // For content scripts, we'll use the URL as identifier since we can't directly access tab ID
-    // Background script will map this to actual tab ID
-    return btoa(window.location.href).replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
-  }
-
   function getContentKey(url) {
     // Normalize a torrent URL to a content identifier so multiple links pointing
     // to the same torrent (e.g. magnet links with different tracker lists) are
@@ -455,9 +574,9 @@
     }
     try {
       const urlObj = new URL(url);
-      return urlObj.origin + urlObj.pathname;
+      return urlObj.origin + urlObj.pathname + urlObj.search;
     } catch {
-      return url.toLowerCase().split('?')[0];
+      return url;
     }
   }
 
@@ -472,9 +591,12 @@
         break;
         
       case MESSAGE_TYPES.CLEAR_DETECTED_LINKS:
-        detectedLinks.clear();
-        saveToStorage();
-        sendResponse({ success: true });
+        clearCurrentStorage().then(() => {
+          sendResponse({ success: true });
+        }).catch(() => {
+          sendResponse({ success: false, error: 'Failed to clear links' });
+        });
+        return true;
         break;
         
       case MESSAGE_TYPES.REMOVE_DETECTED_LINK:
@@ -482,8 +604,12 @@
         const linkToRemove = Array.from(detectedLinks).find(link => link.url === urlToRemove);
         if (linkToRemove) {
           detectedLinks.delete(linkToRemove);
-          saveToStorage();
-          sendResponse({ success: true });
+          saveToStorage().then(() => {
+            sendResponse({ success: true });
+          }).catch(() => {
+            sendResponse({ success: false, error: 'Failed to update storage' });
+          });
+          return true;
         } else {
           sendResponse({ success: false, error: 'Link not found' });
         }
@@ -502,12 +628,16 @@
           break;
         }
 
-        saveToStorage();
-        sendResponse({ success: true, removedCount: beforeCount - afterCount });
+        saveToStorage().then(() => {
+          sendResponse({ success: true, removedCount: beforeCount - afterCount });
+        }).catch(() => {
+          sendResponse({ success: false, error: 'Failed to update storage' });
+        });
+        return true;
         break;
         
       case MESSAGE_TYPES.RESCAN_PAGE:
-        scanPage().then(() => {
+        scanWhenReady().then(() => {
           sendResponse({ success: true });
         });
         return true;
@@ -515,7 +645,7 @@
       case MESSAGE_TYPES.CONFIG_UPDATED:
         configUtils.getConfig().then(newConfig => {
           config = newConfig;
-          scanPage();
+          scanWhenReady();
         });
         break;
     }
@@ -525,16 +655,16 @@
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       // Page became visible, rescan after a short delay
-      setTimeout(scanPage, 1000);
+      setTimeout(scanWhenReady, 1000);
     }
   });
 
   // Initial scan when page is fully loaded
   if (document.readyState === 'complete') {
-    setTimeout(scanPage, 1000);
+    setTimeout(scanWhenReady, 1000);
   } else {
     window.addEventListener('load', () => {
-      setTimeout(scanPage, 1000);
+      setTimeout(scanWhenReady, 1000);
     });
   }
 

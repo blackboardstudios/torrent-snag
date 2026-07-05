@@ -5,9 +5,7 @@ All notable changes to Torrent Snag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-Recommended release impact: patch. If `1.2.0` has already shipped, release these changes as `1.2.1`; if `1.2.0` is still unreleased, fold them into `1.2.0` before tagging.
+## [1.3.0] [Unreleased]
 
 ### Fixed
 - Prevented failed or partially failed torrent sends from being recorded as sent, removed from review state, hidden from the badge, or reported as full success.
@@ -16,10 +14,15 @@ Recommended release impact: patch. If `1.2.0` has already shipped, release these
 - Updated context-menu send behavior to avoid showing a success notification when the background send response reports failure.
 - Reconciled stored built-in pattern and filter definitions on config load so stale extension-owned fields are updated while user `enabled` state is preserved.
 - Replaced popup torrent-row interpolation for untrusted torrent names and URLs with DOM construction using text nodes and attributes.
+- Scoped detected-link storage to the actual tab ID when available, with Unicode-safe SHA-256 URL fallback keys.
+- Removed stale detected-link storage entries when links are cleared, pages navigate, or tabs close.
+- Preserved query strings in non-magnet torrent identity so query-driven download endpoints no longer collapse distinct torrents.
+- Prevented content-script scans from running before configuration and storage initialization finish.
 
 ### Added
 - Added `REMOVE_DETECTED_LINKS` message handling for removing multiple successfully sent detected links by exact URL.
-- Added source-backed tests for background send outcomes, content-script multi-remove behavior, popup rendering safety, and built-in config reconciliation.
+- Added `GET_TAB_ID` message handling for content scripts to resolve their tab-scoped storage key.
+- Added source-backed tests for background send outcomes, content-script multi-remove behavior, popup rendering safety, built-in config reconciliation, URL identity, storage cleanup, and initialization timing.
 
 ## [1.2.0] 2026-05-08
 

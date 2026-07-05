@@ -16,7 +16,8 @@ function loadBackgroundEnvironment() {
     CONFIG: 'config',
     DUPLICATE_TRACKING: 'duplicateTracking',
     REVIEW_POPUP_TAB_ID: 'reviewPopupTabId',
-    REVIEW_POPUP_WINDOW_ID: 'reviewPopupWindowId'
+    REVIEW_POPUP_WINDOW_ID: 'reviewPopupWindowId',
+    DETECTED_LINKS_PREFIX: 'detectedLinks_'
   };
   window.MESSAGE_TYPES = {
     UPDATE_BADGE: 'UPDATE_BADGE',
@@ -24,6 +25,7 @@ function loadBackgroundEnvironment() {
     TEST_CONNECTION: 'TEST_CONNECTION',
     OPEN_REVIEW_POPUP: 'OPEN_REVIEW_POPUP',
     HANDLER_CONFIG_CHANGED: 'HANDLER_CONFIG_CHANGED',
+    GET_TAB_ID: 'GET_TAB_ID',
     GET_DETECTED_LINKS: 'GET_DETECTED_LINKS',
     CLEAR_DETECTED_LINKS: 'CLEAR_DETECTED_LINKS',
     REMOVE_DETECTED_LINK: 'REMOVE_DETECTED_LINK',
@@ -62,7 +64,10 @@ function loadBackgroundEnvironment() {
     },
     tabs: {
       sendMessage: jest.fn(),
-      query: jest.fn()
+      query: jest.fn(),
+      onRemoved: {
+        addListener: jest.fn()
+      }
     },
     action: {
       onClicked: {
@@ -150,6 +155,14 @@ describe('background send result handling', () => {
 
   afterEach(() => {
     testWindow.window.close();
+  });
+
+  test('returns sender tab id for GET_TAB_ID requests', async () => {
+    const response = await sendMessageToBackground(testWindow, {
+      type: 'GET_TAB_ID'
+    }, 42);
+
+    expect(response).toEqual({ tabId: 42 });
   });
 
   test('returns failure payload and does not clear links for all-failed sends', async () => {
@@ -368,5 +381,13 @@ describe('background send result handling', () => {
       total: 2,
       failed: 2
     });
+  });
+
+  test('removes detected-link storage when a tab closes', async () => {
+    const onRemoved = testWindow.window.chrome.tabs.onRemoved.addListener.mock.calls[0][0];
+
+    await onRemoved(123);
+
+    expect(testWindow.window.chrome.storage.local.remove).toHaveBeenCalledWith('detectedLinks_tab_123');
   });
 });

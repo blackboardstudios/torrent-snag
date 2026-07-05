@@ -10,10 +10,19 @@ const hashUtils = {
       }
     }
     
-    // For .torrent URLs, use Web Crypto API for consistent hashing
+    // For direct download URLs, use normalized URL (origin/path/query) for stable identity.
     const encoder = new TextEncoder();
-    const data = encoder.encode(url.toLowerCase().split('?')[0]);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    let normalizedUrl = url;
+    try {
+      const urlObj = new URL(url);
+      normalizedUrl = `${urlObj.origin}${urlObj.pathname}${urlObj.search}`;
+    } catch {
+      // Keep URL intact if it cannot be parsed.
+      normalizedUrl = url;
+    }
+
+    const data = encoder.encode(normalizedUrl);
+    const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   },

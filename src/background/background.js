@@ -140,6 +140,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   serviceWorkerState.updateActivity();
   
   switch (message.type) {
+    case MESSAGE_TYPES.GET_TAB_ID:
+      sendResponse({ tabId: sender.tab?.id ?? null });
+      break;
+
     case MESSAGE_TYPES.UPDATE_BADGE:
       badgeManager.updateBadge(sender.tab?.id, message.count);
       break;
@@ -186,6 +190,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   serviceWorkerState.updateActivity();
   await contextMenuUtils.handleContextMenuClick(info, tab);
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  chrome.storage.local.remove(`${STORAGE_KEYS.DETECTED_LINKS_PREFIX}tab_${tabId}`)
+    .catch(() => {});
 });
 
 // Handle keyboard commands
