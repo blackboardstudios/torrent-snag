@@ -218,7 +218,16 @@ const contextMenuUtils = {
   async sendTorrentLink(linkUrl, label, tab) {
     try {
       // Use existing sendTorrentsToHandler function
-      await sendTorrentsToHandler([linkUrl], tab.id, [label]);
+      const result = await sendTorrentsToHandler([linkUrl], tab.id, [label]);
+
+      if (!result || !result.success) {
+        const errorMessage = result?.error ||
+          (result?.partial
+            ? `Processed ${result.count} of ${result.total}; ${result.failed} failed`
+            : 'Failed to send torrent');
+        this.showNotification(`Failed to send torrent: ${errorMessage}`, 'error');
+        return;
+      }
       
       const handlerName = await this.getHandlerDisplayName();
       const labelText = label ? ` with label "${label}"` : '';

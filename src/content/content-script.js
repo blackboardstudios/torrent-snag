@@ -488,6 +488,23 @@
           sendResponse({ success: false, error: 'Link not found' });
         }
         break;
+
+      case MESSAGE_TYPES.REMOVE_DETECTED_LINKS:
+        const urlsToRemove = Array.isArray(message.urls) ? new Set(message.urls) : new Set();
+        const beforeCount = detectedLinks.size;
+        if (urlsToRemove.size > 0) {
+          detectedLinks = new Set(Array.from(detectedLinks).filter(link => !urlsToRemove.has(link.url)));
+        }
+
+        const afterCount = detectedLinks.size;
+        if (beforeCount === afterCount) {
+          sendResponse({ success: false, error: 'No matching links found' });
+          break;
+        }
+
+        saveToStorage();
+        sendResponse({ success: true, removedCount: beforeCount - afterCount });
+        break;
         
       case MESSAGE_TYPES.RESCAN_PAGE:
         scanPage().then(() => {

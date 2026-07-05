@@ -274,45 +274,177 @@ async function handleActionClick(tab) {
   }
 }
 
+function normalizeHandlerResult(urls, _labels, result = {}) {
+  const totalCount = Array.isArray(urls) ? urls.length : 0;
+  const normalized = {
+    successfulUrls: [],
+    failedResults: [],
+    results: [],
+    successCount: 0,
+    totalCount,
+    allSucceeded: false,
+    allFailed: false,
+    partiallySucceeded: false
+  };
+
+  const results = Array.isArray(result.results) ? result.results : null;
+
+  if (!results) {
+    if (typeof result.count === 'number' && result.count === totalCount) {
+      normalized.successfulUrls = urls.slice();
+      normalized.results = urls.map((url) => ({ url, success: true }));
+      normalized.successCount = totalCount;
+      normalized.allSucceeded = true;
+      return normalized;
+    }
+
+    normalized.allFailed = totalCount > 0;
+    normalized.failedResults = urls.map((url) => ({
+      url,
+      success: false,
+      error: result.error || 'Failed to send torrent'
+    }));
+    normalized.results = normalized.failedResults;
+    return normalized;
+  }
+
+  results.forEach((item, index) => {
+    const url = urls[index];
+    if (!url) {
+      return;
+    }
+
+    if (item && item.success === true) {
+      normalized.successfulUrls.push(url);
+      normalized.results.push({ ...item, url, success: true });
+      normalized.successCount += 1;
+      return;
+    }
+
+    const failedResult = {
+      url,
+      success: false,
+      error: item?.error || item?.message || 'Failed to send torrent'
+    };
+    normalized.failedResults.push(failedResult);
+    normalized.results.push(failedResult);
+  });
+
+  for (let i = results.length; i < totalCount; i += 1) {
+    const failedResult = {
+      url: urls[i],
+      success: false,
+      error: 'Missing result details for torrent'
+    };
+    normalized.failedResults.push(failedResult);
+    normalized.results.push(failedResult);
+  }
+
+  if (normalized.successCount === normalized.totalCount && normalized.totalCount > 0) {
+    normalized.allSucceeded = true;
+  } else if (normalized.successCount === 0 && normalized.failedResults.length === normalized.totalCount) {
+    normalized.allFailed = true;
+  } else if (normalized.successCount > 0 && normalized.failedResults.length > 0) {
+    normalized.partiallySucceeded = true;
+  } else if (normalized.totalCount === 0 && result.count === 0) {
+    normalized.allSucceeded = true;
+  }
+
+  return normalized;
+}
+
 async function sendTorrentsToHandler(urls, tabId, labels = []) {
   try {
     const handler = await createCurrentHandler();
     
     const result = await handler.addTorrents(urls, labels);
-    
-    // Mark torrents as sent
-    for (const url of urls) {
+    const normalized = normalizeHandlerResult(urls, labels, result);
+
+    const urlsToTrack = normalized.successfulUrls;
+
+    await Promise.all(urlsToTrack.map(async (url) => {
       try {
         const hash = await hashUtils.generateHash(url);
         await duplicateTracker.addHash(hash);
       } catch (error) {
         console.error('Torrent Snag: Failed to track hash for:', url, error);
       }
-    }
-    
-    // Clear detected links and badge (ignore if no content script on tab)
+    }));
+
+    const failedCount = normalized.totalCount - normalized.successCount;
+
     if (tabId) {
-      try {
-        await chrome.tabs.sendMessage(tabId, { type: 'CLEAR_DETECTED_LINKS' });
-      } catch (e) {
-        // Tab may not have our content script; ignore
+      if (normalized.allSucceeded) {
+        try {
+          await chrome.tabs.sendMessage(tabId, { type: MESSAGE_TYPES.CLEAR_DETECTED_LINKS });
+        } catch (e) {
+          // Tab may not have our content script; ignore
+        }
+        await badgeManager.clearBadge(tabId);
+      } else if (normalized.partiallySucceeded) {
+        if (urlsToTrack.length > 0) {
+          try {
+            await chrome.tabs.sendMessage(tabId, {
+              type: MESSAGE_TYPES.REMOVE_DETECTED_LINKS,
+              urls: urlsToTrack
+            });
+          } catch (e) {
+            // Tab may not have our content script; keep the partial result non-fatal.
+          }
+        }
+        await badgeManager.updateBadge(tabId, failedCount, false);
+      } else if (normalized.allFailed) {
+        await badgeManager.updateBadge(tabId, failedCount, true);
       }
-      await badgeManager.clearBadge(tabId);
     }
-    
-    // Show success notification
+
+    // Show notification
     const mergedConfig = await configUtils.getConfig();
     const selectedHandler = mergedConfig.selectedHandler || 'qbittorrent';
     const handlerName = HandlerFactory.getAvailableHandlers().find(h => h.id === selectedHandler)?.name || selectedHandler;
+
+    const notificationMessage = normalized.allSucceeded
+      ? `Successfully processed ${normalized.successCount} torrents with ${handlerName}`
+      : normalized.partiallySucceeded
+        ? `Processed ${normalized.successCount} of ${normalized.totalCount} torrents; ${failedCount} failed with ${handlerName}`
+        : `Failed to process torrents with ${handlerName}: ${normalized.failedResults[0]?.error || 'Unknown error'}`;
     
     chrome.notifications.create({
       type: 'basic',
       iconUrl: 'assets/icons/icon-48.png',
       title: 'Torrent Snag',
-      message: `Successfully processed ${result.count} torrents with ${handlerName}`
+      message: notificationMessage
     });
-    
-    return { success: true, count: result.count };
+
+    if (normalized.allSucceeded) {
+      return {
+        success: true,
+        count: normalized.successCount,
+        total: normalized.totalCount,
+        failed: 0,
+        results: normalized.results
+      };
+    }
+
+    if (normalized.partiallySucceeded) {
+      return {
+        success: false,
+        partial: true,
+        count: normalized.successCount,
+        total: normalized.totalCount,
+        failed: failedCount,
+        results: normalized.results
+      };
+    }
+
+    return {
+      success: false,
+      count: 0,
+      total: normalized.totalCount,
+      failed: failedCount,
+      results: normalized.results,
+      error: normalized.failedResults[0]?.error || 'Unknown error'
+    };
     
   } catch (error) {
     console.error('Torrent Snag: Failed to send torrents:', error);

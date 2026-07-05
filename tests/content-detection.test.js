@@ -6,7 +6,7 @@ function createMagnet(hash, name) {
   return `magnet:?xt=urn:btih:${hash}&dn=${encodeURIComponent(name)}`;
 }
 
-async function runContentScript(html, url) {
+async function initializeContentScript(html, url) {
   const dom = new JSDOM(html, {
     url,
     runScripts: 'outside-only',
@@ -44,7 +44,8 @@ async function runContentScript(html, url) {
   };
   dom.window.MESSAGE_TYPES = {
     UPDATE_BADGE: 'UPDATE_BADGE',
-    GET_DETECTED_LINKS: 'GET_DETECTED_LINKS'
+    GET_DETECTED_LINKS: 'GET_DETECTED_LINKS',
+    REMOVE_DETECTED_LINKS: 'REMOVE_DETECTED_LINKS'
   };
   dom.window.chrome = {
     runtime: {
@@ -76,13 +77,33 @@ async function runContentScript(html, url) {
   dom.window.eval(script);
   await new Promise(resolve => dom.window.setTimeout(resolve, 20));
 
-  let response;
-  messageListener({ type: 'GET_DETECTED_LINKS' }, {}, value => {
-    response = value;
-  });
+  return { dom, messageListener };
+}
 
-  dom.window.close();
-  return response;
+function sendMessage(messageListener, message) {
+  return new Promise(resolve => {
+    messageListener(message, {}, response => {
+      resolve(response);
+    });
+  });
+}
+
+async function runContentScript(html, url) {
+  const { dom, messageListener } = await initializeContentScript(html, url);
+  try {
+    return await sendMessage(messageListener, { type: 'GET_DETECTED_LINKS' });
+  } finally {
+    dom.window.close();
+  }
+}
+
+async function runContentScriptWithInstance(html, url, callback) {
+  const { dom, messageListener } = await initializeContentScript(html, url);
+  try {
+    return await callback({ dom, messageListener, sendMessage: (message) => sendMessage(messageListener, message) });
+  } finally {
+    dom.window.close();
+  }
 }
 
 describe('content script detection', () => {
@@ -103,5 +124,31 @@ describe('content script detection', () => {
 
     expect(response.count).toBe(2);
     expect(response.links.map(link => link.url)).toEqual([primaryMagnet, descriptionMagnet]);
+  });
+
+  test('removes matching links when REMOVE_DETECTED_LINKS is sent', async () => {
+    const primaryMagnet = createMagnet('1111111111111111111111111111111111111111', 'Primary Torrent');
+    const secondaryMagnet = createMagnet('2222222222222222222222222222222222222222', 'Secondary Torrent');
+
+    const response = await runContentScriptWithInstance(`
+      <main>
+        <div>
+          <a href="${primaryMagnet}">Primary</a>
+          <a href="${secondaryMagnet}">Secondary</a>
+        </div>
+      </main>
+    `, 'https://example.test/items/9a4beac3', async ({ sendMessage }) => {
+      await sendMessage({ type: 'GET_DETECTED_LINKS' });
+      const removeResponse = await sendMessage({
+        type: 'REMOVE_DETECTED_LINKS',
+        urls: [primaryMagnet]
+      });
+      expect(removeResponse).toEqual({ success: true, removedCount: 1 });
+
+      return sendMessage({ type: 'GET_DETECTED_LINKS' });
+    });
+
+    expect(response.count).toBe(1);
+    expect(response.links.map(link => link.url)).toEqual([secondaryMagnet]);
   });
 });

@@ -179,57 +179,89 @@ function renderTorrentsList() {
 
 function createTorrentElement(torrent, index) {
     const element = document.createElement('div');
-    element.className = 'torrent-item';
-    element.dataset.index = index;
-    
+    element.classList.add('torrent-item');
+    element.dataset.index = String(index);
+
     const isMagnet = torrent.url.startsWith('magnet:');
     const isHtmlRedirect = isHtmlRedirectUrl(torrent.url);
     let torrentType = isMagnet ? 'magnet' : 'torrent';
-    
-    // Special handling for HTML redirects
+
     if (isHtmlRedirect && !isMagnet) {
         torrentType = 'html-redirect';
     }
-    
-    // Extract torrent name from URL
+
     const torrentName = extractTorrentName(torrent.url);
-    
-    element.innerHTML = `
-        <input type="checkbox" class="torrent-checkbox" checked>
-        <div class="torrent-info">
-            <div class="torrent-name" title="${escapeHtml(torrentName)}">
-                ${escapeHtml(torrentName)}
-            </div>
-            <div class="torrent-details">
-                <span class="torrent-type ${torrentType}">
-                    ${getTorrentTypeIcon(torrentType)} ${getTorrentTypeLabel(torrentType)}
-                </span>
-                <span class="torrent-url" title="${escapeHtml(torrent.url)}">
-                    ${escapeHtml(torrent.url)}
-                </span>
-            </div>
-            <div class="torrent-label">
-                <label for="label-${index}">Label:</label>
-                <input type="text" id="label-${index}" class="label-input" placeholder="Optional category/label" maxlength="50">
-            </div>
-        </div>
-        <div class="torrent-actions">
-            <button class="remove-btn" title="Remove this torrent">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="m19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-            </button>
-        </div>
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'torrent-checkbox';
+    checkbox.checked = true;
+
+    const info = document.createElement('div');
+    info.classList.add('torrent-info');
+
+    const name = document.createElement('div');
+    name.classList.add('torrent-name');
+    name.textContent = torrentName;
+    name.setAttribute('title', torrentName);
+
+    const details = document.createElement('div');
+    details.classList.add('torrent-details');
+
+    const type = document.createElement('span');
+    type.classList.add('torrent-type', torrentType);
+    type.textContent = `${getTorrentTypeIcon(torrentType)} ${getTorrentTypeLabel(torrentType)}`;
+
+    const url = document.createElement('span');
+    url.classList.add('torrent-url');
+    url.textContent = torrent.url;
+    url.setAttribute('title', torrent.url);
+
+    const labelWrapper = document.createElement('div');
+    labelWrapper.classList.add('torrent-label');
+
+    const label = document.createElement('label');
+    label.setAttribute('for', `label-${index}`);
+    label.textContent = 'Label:';
+
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text';
+    labelInput.id = `label-${index}`;
+    labelInput.classList.add('label-input');
+    labelInput.placeholder = 'Optional category/label';
+    labelInput.maxLength = 50;
+
+    const actions = document.createElement('div');
+    actions.classList.add('torrent-actions');
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.title = 'Remove this torrent';
+    removeBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="m19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
     `;
+
+    details.appendChild(type);
+    details.appendChild(url);
+    labelWrapper.appendChild(label);
+    labelWrapper.appendChild(labelInput);
+
+    info.appendChild(name);
+    info.appendChild(details);
+    info.appendChild(labelWrapper);
+
+    actions.appendChild(removeBtn);
+
+    element.appendChild(checkbox);
+    element.appendChild(info);
+    element.appendChild(actions);
     
     // Add event listeners
-    const checkbox = element.querySelector('.torrent-checkbox');
-    const removeBtn = element.querySelector('.remove-btn');
-    const labelInput = element.querySelector('.label-input');
-    
     checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
             selectedTorrents.add(index);
@@ -288,12 +320,6 @@ function extractTorrentName(url) {
     } catch (error) {
         return 'Unknown Torrent';
     }
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 async function removeTorrent(index) {
@@ -420,14 +446,20 @@ async function sendSelectedTorrents() {
             };
         });
         
-        // Send to background script and close popup immediately
-        chrome.runtime.sendMessage({
+        const response = await chrome.runtime.sendMessage({
             type: 'SEND_TORRENTS',
             tabId: targetTabId,
             torrents: selectedData
         });
-        
-        // Close popup immediately
+
+        if (!response || !response.success) {
+            const failureReason = response?.error ||
+                (response?.partial
+                    ? `Processed ${response.count} of ${response.total}; ${response.failed} failed`
+                    : 'Failed to send selected torrents.');
+            throw new Error(failureReason);
+        }
+
         window.close();
         
     } catch (error) {
@@ -495,4 +527,11 @@ function getTorrentTypeLabel(type) {
         case 'html-redirect': return 'HTML REDIRECT';
         default: return 'UNKNOWN';
     }
+}
+
+if (typeof window !== 'undefined' && window.__TORRENT_SNAG_TEST_HOOKS__) {
+    window.__torrentSnagPopupTest = {
+        createTorrentElement,
+        extractTorrentName
+    };
 }
