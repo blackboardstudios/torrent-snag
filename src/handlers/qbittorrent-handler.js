@@ -238,7 +238,7 @@ Possible solutions:
         method: 'GET',
         mode: 'cors',
         credentials: 'include'
-      }).catch(error => {
+      }).catch(_error => {
         return null;
       });
       

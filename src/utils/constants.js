@@ -44,3 +44,10 @@ const DEFAULTS = {
   CLEANUP_INTERVAL_DAYS: 30,
   MAX_ENTRIES_AFTER_CLEANUP: 5000
 };
+
+if (typeof window !== 'undefined') {
+  window.MESSAGE_TYPES = MESSAGE_TYPES;
+  window.STORAGE_KEYS = STORAGE_KEYS;
+  window.HANDLER_TYPES = HANDLER_TYPES;
+  window.DEFAULTS = DEFAULTS;
+}

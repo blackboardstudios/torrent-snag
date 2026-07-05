@@ -105,7 +105,14 @@ function loadBackgroundEnvironment() {
           name: 'Generic Download'
         }
       }
-    })
+    }),
+    setConfig: jest.fn(async () => {})
+  };
+
+  window.contextMenuUtils = {
+    setupContextMenus: jest.fn(async () => {}),
+    updateContextMenus: jest.fn(async () => {}),
+    handleContextMenuClick: jest.fn(async () => {})
   };
 
   window.HandlerFactory = {
@@ -121,7 +128,8 @@ function loadBackgroundEnvironment() {
   };
 
   window.duplicateTracker = {
-    addHash: jest.fn(async () => {})
+    addHash: jest.fn(async () => {}),
+    cleanupOldHashes: jest.fn(async () => {})
   };
 
   window.importScripts = jest.fn();
@@ -389,5 +397,15 @@ describe('background send result handling', () => {
     await onRemoved(123);
 
     expect(testWindow.window.chrome.storage.local.remove).toHaveBeenCalledWith('detectedLinks_tab_123');
+  });
+
+  test('cleans up duplicate tracking on install and startup', async () => {
+    const onInstalled = testWindow.window.chrome.runtime.onInstalled.addListener.mock.calls[0][0];
+    const onStartup = testWindow.window.chrome.runtime.onStartup.addListener.mock.calls[0][0];
+
+    await onInstalled({ reason: 'install' });
+    await onStartup();
+
+    expect(testWindow.window.duplicateTracker.cleanupOldHashes).toHaveBeenCalledTimes(2);
   });
 });

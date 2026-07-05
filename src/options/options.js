@@ -1,5 +1,7 @@
 // Torrent Snag Options Page JavaScript
 (async () => {
+    'use strict';
+
     // Localization: replace all [data-i18n] elements with localized strings
     async function localizeOptionsPage() {
         // Get selected language from config
@@ -32,7 +34,6 @@
             }
         });
     }
-    'use strict';
 
     let currentConfig = {};
     let currentPatternId = null;
@@ -41,6 +42,13 @@
     // Change tracking for unified save button
     let hasUnsavedChanges = false;
     const originalValues = new Map();
+
+    if (typeof window !== 'undefined' && window.__TORRENT_SNAG_OPTIONS_TEST_HOOKS__) {
+        window.__torrentSnagOptionsTest = {
+            getRequiredHandlerFields
+        };
+        return;
+    }
 
     // Localize UI first
     await localizeOptionsPage();
@@ -141,31 +149,6 @@
         
         // Track changes to enable save button
         setupChangeTracking();
-    // Save language and theme
-    async function saveThemeAndLanguageSettings() {
-        const button = document.getElementById('save-theme');
-        button.disabled = true;
-        try {
-            const themeConfig = {
-                forceDarkMode: document.getElementById('force-dark-mode').checked
-            };
-            const langSelector = document.getElementById('language-selector');
-            const selectedLang = langSelector ? langSelector.value : 'en';
-            currentConfig.theme = themeConfig;
-            currentConfig.language = selectedLang;
-            await configUtils.setConfig(currentConfig);
-            showStatus('success', 'Theme and language settings saved successfully!');
-            // Re-localize the page with the new language
-            setTimeout(async () => {
-                await localizeOptionsPage();
-            }, 800);
-        } catch (error) {
-            showStatus('error', `Failed to save settings: ${error.message}`);
-        } finally {
-            button.disabled = false;
-        }
-    }
-        
         // Settings import/export
         document.getElementById('export-settings').addEventListener('click', exportSettings);
         document.getElementById('import-settings').addEventListener('click', () => {
@@ -306,12 +289,17 @@
                     break;
                 case 'defaultLabel':
                     label.htmlFor = input.id;
-                    label.textContent = 'Default Label/Category';
+                    const isQBittorrent = handler.id === 'qbittorrent';
+                    label.textContent = isQBittorrent ? 'Default category' : 'Default label/category';
                     input.type = 'text';
                     input.placeholder = 'e.g., Movies, TV Shows';
                     formGroup.appendChild(label);
                     formGroup.appendChild(input);
-                    formGroup.appendChild(createFormText('Optional: Default label/category to assign to torrents (leave empty for none)'));
+                    formGroup.appendChild(createFormText(
+                        isQBittorrent
+                            ? 'Optional default category to assign to torrents (leave empty for none)'
+                            : 'Optional default label/category to assign to torrents (leave empty for none)'
+                    ));
                     break;
             }
             
@@ -392,6 +380,25 @@
         return div;
     }
 
+    function getRequiredHandlerFields(handler) {
+        const fields = Array.isArray(handler?.fields) ? handler.fields : [];
+        const requiredFields = [];
+
+        if (fields.includes('url')) {
+            requiredFields.push('url');
+        }
+
+        if (handler?.requiresAuth) {
+            fields.forEach((field) => {
+                if (!['timeout', 'defaultLabel', 'url'].includes(field) && !requiredFields.includes(field)) {
+                    requiredFields.push(field);
+                }
+            });
+        }
+
+        return requiredFields;
+    }
+
     async function testConnection() {
         const button = document.getElementById('test-connection');
         const status = document.getElementById('connection-status');
@@ -419,27 +426,22 @@
                 }
             });
             
-            // Validate required fields
-            const requiredFields = handler.fields.filter(field => field !== 'timeout' && field !== 'defaultLabel');
+            const requiredFields = getRequiredHandlerFields(handler);
             const missingFields = requiredFields.filter(field => !handlerConfig[field]);
             
-            if (missingFields.length > 0 && handler.requiresAuth) {
+            if (missingFields.length > 0) {
                 throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
             }
             
-            if (!handlerConfig.url) {
+            if (!handlerConfig.url && handler.fields.includes('url')) {
                 throw new Error('Server URL is required');
             }
-            
-            console.log('Options: Testing connection for', selectedHandler, 'with config:', handlerConfig);
             
             const response = await chrome.runtime.sendMessage({
                 type: 'TEST_CONNECTION',
                 handlerType: selectedHandler,
                 config: handlerConfig
             });
-            
-            console.log('Options: Received response:', response);
             
             if (response.success) {
                 showStatus('success', response.message || 'Connection successful!', status);
@@ -456,105 +458,6 @@
         } finally {
             button.disabled = false;
             button.textContent = 'Test Connection';
-        }
-    }
-
-    async function saveHandlerConfig() {
-        const button = document.getElementById('save-handler-config');
-        const status = document.getElementById('connection-status');
-        
-        button.disabled = true;
-        
-        try {
-            const selectedHandler = document.getElementById('handler-selector').value;
-            const handler = availableHandlers.find(h => h.id === selectedHandler);
-            
-            if (!handler) {
-                throw new Error('No handler selected');
-            }
-            
-            const handlerConfig = {};
-            
-            // Collect configuration from form fields
-            handler.fields.forEach(field => {
-                const element = document.getElementById(`handler-${field}`);
-                if (element) {
-                    if (field === 'url') {
-                        handlerConfig[field] = element.value.replace(/\/$/, '');
-                    } else {
-                        handlerConfig[field] = element.value;
-                    }
-                }
-            });
-            
-            // Set default timeout if not provided
-            if (!handlerConfig.timeout) {
-                handlerConfig.timeout = 30000;
-            }
-            
-            // Save handler configuration and selection
-            await configUtils.updateHandlerConfig(selectedHandler, handlerConfig);
-            await configUtils.setSelectedHandler(selectedHandler);
-            currentConfig = await configUtils.getConfig();
-            
-            // Notify background script to update context menus
-            try {
-                await chrome.runtime.sendMessage({
-                    type: 'HANDLER_CONFIG_CHANGED',
-                    handlerType: selectedHandler
-                });
-            } catch (error) {
-            }
-            
-            showStatus('success', 'Configuration saved successfully!', status);
-        } catch (error) {
-            showStatus('error', `Failed to save configuration: ${error.message}`, status);
-        } finally {
-            button.disabled = false;
-        }
-    }
-
-    async function savePerformanceSettings() {
-        const button = document.getElementById('save-performance');
-        
-        button.disabled = true;
-        
-        try {
-            const performanceConfig = {
-                maxLinksPerScan: parseInt(document.getElementById('max-links').value),
-                chunkSize: parseInt(document.getElementById('chunk-size').value),
-                debounceDelay: parseInt(document.getElementById('debounce-delay').value)
-            };
-            
-            currentConfig.performance = performanceConfig;
-            await configUtils.setConfig(currentConfig);
-            
-            showStatus('success', 'Performance settings saved successfully!');
-        } catch (error) {
-            showStatus('error', `Failed to save performance settings: ${error.message}`);
-        } finally {
-            button.disabled = false;
-        }
-    }
-
-    async function saveThemeSettings() {
-        const button = document.getElementById('save-theme');
-        
-        button.disabled = true;
-        
-        try {
-            const themeConfig = {
-                forceDarkMode: document.getElementById('force-dark-mode').checked
-            };
-            
-            currentConfig.theme = themeConfig;
-            await configUtils.setConfig(currentConfig);
-            
-            showStatus('success', 'Theme settings saved successfully!');
-        } catch (error) {
-            showStatus('error', `Failed to save theme settings: ${error.message}`);
-        } finally {
-            button.disabled = false;
         }
     }
 
@@ -732,7 +635,7 @@
     }
 
     function updateOriginalValues() {
-        originalValues.forEach((value, elementId) => {
+        originalValues.forEach((_value, elementId) => {
             const element = document.getElementById(elementId);
             if (element) {
                 const currentValue = element.type === 'checkbox' ? element.checked : element.value;
@@ -798,13 +701,6 @@
         currentConfig.language = selectedLang;
         await configUtils.setConfig(currentConfig);
         
-        // Re-localize the page with the new language if changed
-        const currentLang = await configUtils.getConfig().then(c => c.language || 'en');
-        if (selectedLang !== currentLang) {
-            setTimeout(async () => {
-                await localizeOptionsPage();
-            }, 800);
-        }
     }
 
     function openPatternModal(patternId = null) {
@@ -929,46 +825,6 @@
             button.disabled = false;
         }
     }
-
-    // Global functions for pattern management
-    window.editPattern = (patternId) => {
-        openPatternModal(patternId);
-    };
-
-    window.deletePattern = async (patternId) => {
-        if (!confirm('Are you sure you want to delete this pattern?')) {
-            return;
-        }
-        
-        try {
-            await configUtils.removePattern(patternId);
-            currentConfig = await configUtils.getConfig();
-            renderPatterns();
-            showStatus('success', 'Pattern deleted successfully!');
-        } catch (error) {
-            showStatus('error', `Failed to delete pattern: ${error.message}`);
-        }
-    };
-
-    window.togglePattern = async (patternId, enabled) => {
-        try {
-            await configUtils.updatePattern(patternId, { enabled });
-            currentConfig = await configUtils.getConfig();
-            
-            // Notify content scripts of pattern changes
-            chrome.tabs.query({}, (tabs) => {
-                tabs.forEach(tab => {
-                    chrome.tabs.sendMessage(tab.id, { type: MESSAGE_TYPES.CONFIG_UPDATED }).catch(() => {
-                        // Ignore errors for tabs that don't have content scripts
-                    });
-                });
-            });
-            
-            showStatus('success', `Pattern ${enabled ? 'enabled' : 'disabled'} successfully!`);
-        } catch (error) {
-            showStatus('error', `Failed to update pattern: ${error.message}`);
-        }
-    };
 
     // Utility functions
     function showStatus(type, message, element = null) {
@@ -1352,7 +1208,7 @@
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = (e) => reject(new Error('Failed to read file'));
+            reader.onerror = () => reject(new Error('Failed to read file'));
             reader.readAsText(file);
         });
     }
@@ -1371,7 +1227,6 @@
             document.getElementById('extension-version').textContent = manifest.version;
 
             // Get browser version
-            const browserInfo = await chrome.runtime.getPlatformInfo();
             const browserVersionElement = document.getElementById('browser-version');
             browserVersionElement.textContent = `Chrome ${navigator.userAgent.match(/Chrome\/([^\s]+)/)?.[1] || 'Unknown'}`;
             browserVersionElement.removeAttribute('data-i18n');

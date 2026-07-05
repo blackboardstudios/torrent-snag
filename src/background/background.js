@@ -108,6 +108,11 @@ const badgeManager = {
 // Event listeners
 chrome.runtime.onInstalled.addListener(async (details) => {
   await serviceWorkerState.initialize();
+  try {
+    await duplicateTracker.cleanupOldHashes();
+  } catch (error) {
+    console.error('Torrent Snag: Duplicate cleanup failed during install:', error);
+  }
 
   // Only initialize default config on fresh install, or if missing
   try {
@@ -127,6 +132,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 chrome.runtime.onStartup.addListener(async () => {
   await serviceWorkerState.initialize();
+  try {
+    await duplicateTracker.cleanupOldHashes();
+  } catch (error) {
+    console.error('Torrent Snag: Duplicate cleanup failed during startup:', error);
+  }
 });
 
 // Handle extension icon clicks (direct send all torrents)
@@ -243,8 +253,8 @@ async function openReviewPopup(tabId) {
     
     // Store the tab ID so the popup can communicate with the correct tab
     await chrome.storage.local.set({
-      reviewPopupTabId: tabId,
-      reviewPopupWindowId: popup.id
+      [STORAGE_KEYS.REVIEW_POPUP_TAB_ID]: tabId,
+      [STORAGE_KEYS.REVIEW_POPUP_WINDOW_ID]: popup.id
     });
     
   } catch (error) {
@@ -515,43 +525,6 @@ async function testHandlerConnection(handlerType, handlerConfig) {
 }
 
 
-
-
-
-async function cleanupDuplicateTracking() {
-  try {
-    const data = await chrome.storage.local.get([STORAGE_KEYS.DUPLICATE_TRACKING]);
-    const tracking = data.duplicateTracking;
-    
-    if (!tracking?.sentHashes) return;
-
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    const cleaned = {};
-    
-    for (const [hash, hashData] of Object.entries(tracking.sentHashes)) {
-      if (new Date(hashData.timestamp).getTime() > thirtyDaysAgo) {
-        cleaned[hash] = hashData;
-      }
-    }
-    
-    // If still too large, keep only most recent 5000 entries
-    if (Object.keys(cleaned).length > 5000) {
-      const sorted = Object.entries(cleaned)
-        .sort((a, b) => new Date(b[1].timestamp) - new Date(a[1].timestamp))
-        .slice(0, 5000);
-      
-      tracking.sentHashes = Object.fromEntries(sorted);
-    } else {
-      tracking.sentHashes = cleaned;
-    }
-    
-    tracking.lastCleared = new Date().toISOString();
-    await chrome.storage.local.set({ duplicateTracking: tracking });
-    
-  } catch (error) {
-    console.error('Torrent Snag: Cleanup failed:', error);
-  }
-}
 
 // Initialize service worker
 serviceWorkerState.initialize();

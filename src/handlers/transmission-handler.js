@@ -101,11 +101,7 @@ class TransmissionHandler extends BaseTorrentHandler {
             arguments: {}
           };
 
-          if (url.startsWith('magnet:')) {
-            body.arguments.filename = url;
-          } else {
-            body.arguments.filename = url;
-          }
+          body.arguments.filename = url;
 
           // Add labels if provided (Transmission supports labels via array)
           if (label && label.trim()) {
@@ -154,24 +150,17 @@ class TransmissionHandler extends BaseTorrentHandler {
 
   async testConnection() {
     try {
-      console.log('Transmission: Testing connection to', this.baseURL);
-      
       if (!this.isAuthenticated && !(await this.login())) {
-        console.log('Transmission: Login failed');
         return false;
       }
 
       const headers = {
         ...this.buildHeaders()
       };
-
-      console.log('Transmission: Sending request with headers', Object.keys(headers));
       
       const response = await this.rpcFetch({
         method: 'session-get'
       }, headers);
-
-      console.log('Transmission: Response status', response.status);
       
       return response.ok || response.status === 409;
     } catch (error) {

@@ -43,6 +43,7 @@ async function initializeContentScript(html, url, options = {}) {
 
     resolve(configValue);
   });
+  const getConfigImpl = options.getConfigImpl || (() => configResolver());
 
   const runtimeMessageResult = options.tabId === undefined
     ? { tabId: 77 }
@@ -59,7 +60,7 @@ async function initializeContentScript(html, url, options = {}) {
   }
 
   dom.window.configUtils = {
-    getConfig: jest.fn().mockImplementation(() => configResolver())
+    getConfig: jest.fn().mockImplementation(getConfigImpl)
   };
   dom.window.hashUtils = {
     generateHash: jest.fn(async linkUrl => {
@@ -125,6 +126,10 @@ async function initializeContentScript(html, url, options = {}) {
       return crypto.createHash('sha256').update(Buffer.from(new Uint8Array(data))).digest();
     })
   };
+
+  if (options.regExpFactory) {
+    dom.window.RegExp = options.regExpFactory(dom.window.RegExp);
+  }
 
   const script = fs.readFileSync(path.join(__dirname, '../src/content/content-script.js'), 'utf8');
   dom.window.eval(script);
@@ -260,6 +265,101 @@ describe('content script detection', () => {
     const clearResponse = await sendMessage(messageListener, { type: 'CLEAR_DETECTED_LINKS' });
     expect(clearResponse).toEqual({ success: true });
     expect(Object.keys(storageData).length).toBe(0);
+
+    dom.window.close();
+  });
+
+  test('removes only the specified links when handling REMOVE_DETECTED_LINKS', async () => {
+    const { dom, messageListener, storageData } = await initializeContentScript(`
+      <main>
+        <a href="https://example.test/keep.torrent">Keep</a>
+        <a href="https://example.test/remove-a.torrent">Remove A</a>
+        <a href="https://example.test/remove-b.torrent">Remove B</a>
+      </main>
+    `, 'https://example.test/multi-remove', {
+      config: {
+        patterns: [
+          {
+            id: 'direct-torrent',
+            regex: 'https?://[^\\s]*\\.torrent(?:\\?[^\\s]*)?',
+            enabled: true
+          }
+        ],
+        filters: [],
+        performance: {
+          maxLinksPerScan: 1000,
+          chunkSize: 100,
+          debounceDelay: 10
+        }
+      }
+    });
+
+    const initial = await sendMessage(messageListener, { type: 'GET_DETECTED_LINKS' });
+    expect(initial.count).toBe(3);
+
+    const response = await sendMessage(messageListener, {
+      type: 'REMOVE_DETECTED_LINKS',
+      urls: [
+        'https://example.test/remove-a.torrent',
+        'https://example.test/remove-b.torrent'
+      ]
+    });
+    expect(response).toEqual({ success: true, removedCount: 2 });
+
+    const after = await sendMessage(messageListener, { type: 'GET_DETECTED_LINKS' });
+    expect(after.count).toBe(1);
+    expect(after.links[0].url).toBe('https://example.test/keep.torrent');
+
+    const storageKey = Object.keys(storageData)[0];
+    expect(storageData[storageKey].length).toBe(1);
+    expect(storageData[storageKey][0].url).toBe('https://example.test/keep.torrent');
+
+    dom.window.close();
+  });
+
+  test('refreshes scans with updated config after CONFIG_UPDATED', async () => {
+    const currentConfig = {
+      patterns: [
+        {
+          id: 'direct-torrent',
+          regex: 'https?://[^\\s]*keep\\.torrent',
+          enabled: true
+        }
+      ],
+      filters: [],
+      performance: {
+        maxLinksPerScan: 1000,
+        chunkSize: 100,
+        debounceDelay: 10
+      }
+    };
+
+    const { dom, messageListener } = await initializeContentScript(`
+      <main>
+        <a href="https://example.test/keep.torrent">Keep</a>
+        <a href="https://example.test/changed.torrent">Changed</a>
+      </main>
+    `, 'https://example.test/config-refresh', {
+      config: currentConfig
+    });
+
+    const initial = await sendMessage(messageListener, { type: 'GET_DETECTED_LINKS' });
+    expect(initial.count).toBe(1);
+    expect(initial.links[0].url).toBe('https://example.test/keep.torrent');
+
+    currentConfig.patterns = [{
+      id: 'direct-torrent',
+      regex: 'https?://[^\\s]*changed\\.torrent',
+      enabled: true
+    }];
+
+    messageListener({ type: 'CONFIG_UPDATED' }, {}, () => {});
+    await new Promise(resolve => dom.window.setTimeout(resolve, 20));
+    await sendMessage(messageListener, { type: 'RESCAN_PAGE' });
+
+    const updated = await sendMessage(messageListener, { type: 'GET_DETECTED_LINKS' });
+    expect(updated.count).toBe(1);
+    expect(updated.links[0].url).toBe('https://example.test/changed.torrent');
 
     dom.window.close();
   });

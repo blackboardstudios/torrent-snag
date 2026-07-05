@@ -73,8 +73,8 @@ async function detectAndApplyTheme() {
 async function getTargetTabId() {
     try {
         // Get the stored tab ID from the background script
-        const result = await chrome.storage.local.get(['reviewPopupTabId']);
-        targetTabId = result.reviewPopupTabId;
+        const result = await chrome.storage.local.get([STORAGE_KEYS.REVIEW_POPUP_TAB_ID]);
+        targetTabId = result[STORAGE_KEYS.REVIEW_POPUP_TAB_ID];
         
         if (!targetTabId) {
             // Fallback to current active tab
@@ -395,7 +395,7 @@ async function updateCounters() {
     // Get handler name from configuration
     const config = await configUtils.getConfig();
     const selectedHandler = config.selectedHandler || 'qbittorrent';
-    const handlerName = (config.handlers?.[selectedHandler]?.name) || selectedHandler;
+    const handlerName = getHandlerDisplayName(selectedHandler);
     
     // Update headers
     document.getElementById('torrents-count').textContent = 
@@ -409,6 +409,17 @@ async function updateCounters() {
     sendBtn.textContent = selectedCount === 0 
         ? `Send to ${handlerName}`
         : `Send ${selectedCount} to ${handlerName}`;
+}
+
+function getHandlerDisplayName(handlerId) {
+    const handlerDisplayNames = {
+      qbittorrent: 'qBittorrent',
+      transmission: 'Transmission',
+      deluge: 'Deluge',
+      download: 'Generic Download'
+    };
+
+    return handlerDisplayNames[handlerId] || handlerId;
 }
 
 function applyBulkLabel() {
@@ -532,6 +543,8 @@ function getTorrentTypeLabel(type) {
 if (typeof window !== 'undefined' && window.__TORRENT_SNAG_TEST_HOOKS__) {
     window.__torrentSnagPopupTest = {
         createTorrentElement,
-        extractTorrentName
+        extractTorrentName,
+        getHandlerDisplayName,
+        getTargetTabId
     };
 }

@@ -4,10 +4,10 @@
 
 - **Two build scripts exist with different behavior:**
   - `npm run build` / `node build.js` — uses esbuild to bundle `background.js`, `popup.js`, `options.js` as IIFE, copies remaining assets to `dist/`. Use this for development.
-  - `./build.sh` — naive `cp -r src/* dist/` with no bundling. Does not run esbuild. Use only for quick inspection; it skips bundling of entry points.
+  - `./build.sh` — wrapper around `npm run build` that performs a basic `dist/` file check. It does not run esbuild itself.
   - `npm run build:prod` — same as `build.js` but with minification and no sourcemaps.
 - Always run `npm run build` before loading the extension in Chrome. The `dist/` folder is the loadable unpacked extension.
-- No linting is configured. The `npm run lint` script is a placeholder (`echo`).
+- `npm run lint` runs ESLint against `src/**/*.js`, `tests/**/*.js`, and `build.js`.
 
 ## Testing
 
@@ -37,6 +37,6 @@
 
 ## Version & Release
 
-- Current version: `1.2.0` (UNRELEASED per CHANGELOG.md). Version appears in both `package.json` and `src/manifest.json` — update both when bumping.
-- CHANGELOG.md has a duplicated header block (lines 1-6 repeated at lines 29-34) — a known artifact.
-- No CI/CD workflows exist. No pre-commit hooks.
+- Current package/manifest version: `1.2.0`; next unreleased changes are tracked under `1.3.0` in CHANGELOG.md. Version appears in both `package.json` and `src/manifest.json` — update both when bumping.
+- CHANGELOG.md should keep new entries under the existing unpublished `1.3.0` section until that release is tagged.
+- CI workflows exist at `.github/workflows/ci.yml` for lint, tests, and production build checks. No pre-commit hooks.

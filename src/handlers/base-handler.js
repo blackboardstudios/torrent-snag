@@ -14,7 +14,7 @@ class BaseTorrentHandler {
     throw new Error('login() must be implemented by subclass');
   }
 
-  async addTorrents(urls, labels = []) {
+  async addTorrents(_urls, _labels = []) {
     throw new Error('addTorrents() must be implemented by subclass');
   }
 
@@ -28,7 +28,7 @@ class BaseTorrentHandler {
   }
 
   // Common utility methods
-  showNotification(message, type = 'info') {
+  showNotification(message, _type = 'info') {
     if (!this.isTesting) {
       chrome.notifications.create({
         type: 'basic',

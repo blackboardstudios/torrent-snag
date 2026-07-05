@@ -14,6 +14,9 @@
   let isTabScoped = false;
   let mutationObserver = null;
   let extensionContextInvalidated = false;
+  let compiledPatternCache = null;
+  let compiledFilterCache = null;
+  let compiledConfigSignature = null;
   const detectedLinksPrefix = typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS?.DETECTED_LINKS_PREFIX
     ? STORAGE_KEYS.DETECTED_LINKS_PREFIX
     : 'detectedLinks_';
@@ -393,27 +396,66 @@
     return Array.from(elements);
   }
 
-  async function detectLinksInChunks() {
-    const detected = new Set();
-    const chunkSize = config.performance.chunkSize;
-    
-    // Compile regex patterns for better performance
-    const compiledPatterns = config.patterns
+  function getConfigSignature(targetConfig) {
+    const safeConfig = targetConfig || {};
+    const normalizeItems = (items) => {
+      return (Array.isArray(items) ? items : [])
+        .map(item => ({
+          id: item?.id,
+          regex: item?.regex,
+          enabled: item?.enabled
+        }));
+    };
+
+    return JSON.stringify({
+      patterns: normalizeItems(safeConfig.patterns),
+      filters: normalizeItems(safeConfig.filters)
+    });
+  }
+
+  function getCompiledRules() {
+    const nextSignature = getConfigSignature(config);
+    if (
+      nextSignature === compiledConfigSignature &&
+      compiledPatternCache !== null &&
+      compiledFilterCache !== null
+    ) {
+      return {
+        compiledPatterns: compiledPatternCache,
+        compiledFilters: compiledFilterCache
+      };
+    }
+
+    const compiledPatterns = (config.patterns || [])
       .filter(p => p.enabled)
-      .map(p => ({
+      .map((p) => ({
         ...p,
         compiledRegex: new RegExp(p.regex, 'i')
       }));
 
-    const allLinks = getCandidateLinkElements(compiledPatterns);
-
-    // Compile filter patterns for filtering out unwanted torrents
     const compiledFilters = (config.filters || [])
       .filter(f => f.enabled)
-      .map(f => ({
+      .map((f) => ({
         ...f,
         compiledRegex: new RegExp(f.regex, 'i')
       }));
+
+    compiledPatternCache = compiledPatterns;
+    compiledFilterCache = compiledFilters;
+    compiledConfigSignature = nextSignature;
+
+    return {
+      compiledPatterns,
+      compiledFilters
+    };
+  }
+
+  async function detectLinksInChunks() {
+    const detected = new Set();
+    const chunkSize = config.performance.chunkSize;
+    const { compiledPatterns, compiledFilters } = getCompiledRules();
+
+    const allLinks = getCandidateLinkElements(compiledPatterns);
 
     for (let i = 0; i < allLinks.length && detected.size < config.performance.maxLinksPerScan; i += chunkSize) {
       const chunk = allLinks.slice(i, i + chunkSize);
@@ -581,7 +623,7 @@
   }
 
   // Listen for messages from background script
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     switch (message.type) {
       case MESSAGE_TYPES.GET_DETECTED_LINKS:
         sendResponse({
@@ -597,7 +639,6 @@
           sendResponse({ success: false, error: 'Failed to clear links' });
         });
         return true;
-        break;
         
       case MESSAGE_TYPES.REMOVE_DETECTED_LINK:
         const urlToRemove = message.url;
@@ -634,7 +675,6 @@
           sendResponse({ success: false, error: 'Failed to update storage' });
         });
         return true;
-        break;
         
       case MESSAGE_TYPES.RESCAN_PAGE:
         scanWhenReady().then(() => {
@@ -643,6 +683,9 @@
         return true;
         
       case MESSAGE_TYPES.CONFIG_UPDATED:
+        compiledPatternCache = null;
+        compiledFilterCache = null;
+        compiledConfigSignature = null;
         configUtils.getConfig().then(newConfig => {
           config = newConfig;
           scanWhenReady();

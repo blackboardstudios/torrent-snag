@@ -8,6 +8,12 @@ class DelugeHandler extends BaseTorrentHandler {
     this.baseURL = config.url.replace(/\/$/, '');
     this.password = config.password;
     this.sessionCookie = null;
+    this.requestId = 0;
+  }
+
+  nextRequestId() {
+    this.requestId += 1;
+    return this.requestId;
   }
 
   async login() {
@@ -71,7 +77,7 @@ class DelugeHandler extends BaseTorrentHandler {
               path: url,
               options: torrentOptions
             }]],
-            id: Date.now()
+            id: this.nextRequestId()
           };
 
           const response = await fetch(`${this.baseURL}/json`, {

@@ -10,7 +10,7 @@
     "clean": "rm -rf dist/",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "lint": "echo 'Lint script placeholder'",
+    "lint": "eslint \"src/**/*.js\" \"tests/**/*.js\" build.js",
     "watch": "echo 'Watch mode not implemented yet'"
   },
   "keywords": [
@@ -22,16 +22,25 @@
   "author": "Blackboard Studios",
   "license": "GPL-3.0",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/chrome": "^0.0.268",
     "esbuild": "^0.24.0",
+    "eslint": "^10.6.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0"
   },
   "jest": {
     "testEnvironment": "jsdom",
-    "setupFilesAfterEnv": ["./tests/setup.js"],
-    "testMatch": ["**/tests/**/*.test.js"],
-    "moduleFileExtensions": ["js", "json"]
+    "setupFilesAfterEnv": [
+      "./tests/setup.js"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "json"
+    ]
   },
   "repository": {
     "type": "git",

@@ -22,6 +22,10 @@ function createPopupEnvironment() {
   dom.window.configUtils = {
     getConfig: jest.fn().mockResolvedValue({})
   };
+  dom.window.STORAGE_KEYS = {
+    REVIEW_POPUP_TAB_ID: 'reviewPopupTabId',
+    REVIEW_POPUP_WINDOW_ID: 'reviewPopupWindowId'
+  };
   dom.window.chrome = {
     runtime: {
       sendMessage: jest.fn(),
@@ -69,6 +73,35 @@ describe('popup torrent rendering', () => {
     expect(url.getAttribute('title')).toBe(torrent.url);
     expect(url.getAttribute('onerror')).toBeNull();
 
+    dom.window.close();
+  });
+
+  test('maps handler ids to user-facing names in popup counts', async () => {
+    const dom = createPopupEnvironment();
+    dom.window.getTargetTabId = jest.fn().mockResolvedValue(undefined);
+    const hook = dom.window.__torrentSnagPopupTest;
+
+    expect(hook.getHandlerDisplayName('qbittorrent')).toBe('qBittorrent');
+    expect(hook.getHandlerDisplayName('transmission')).toBe('Transmission');
+    expect(hook.getHandlerDisplayName('deluge')).toBe('Deluge');
+    expect(hook.getHandlerDisplayName('download')).toBe('Generic Download');
+    expect(hook.getHandlerDisplayName('custom')).toBe('custom');
+
+    dom.window.close();
+  });
+
+  test('uses STORAGE_KEYS constant when loading review popup tab id', async () => {
+    const dom = createPopupEnvironment();
+
+    dom.window.STORAGE_KEYS = {
+      REVIEW_POPUP_TAB_ID: 'reviewPopupTabId'
+    };
+    dom.window.chrome.storage.local.get.mockResolvedValue({ reviewPopupTabId: 987 });
+    dom.window.chrome.tabs.query.mockResolvedValue([{ id: 987 }]);
+
+    await dom.window.__torrentSnagPopupTest.getTargetTabId();
+
+    expect(dom.window.chrome.storage.local.get).toHaveBeenCalledWith(['reviewPopupTabId']);
     dom.window.close();
   });
 });
