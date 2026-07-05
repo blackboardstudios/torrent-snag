@@ -27,11 +27,17 @@ describe('SwarmOtterHandler', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'info').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'table').mockImplementation(() => {});
   });
 
   afterEach(() => {
     delete global.fetch;
     console.error.mockRestore();
+    console.info.mockRestore();
+    console.warn.mockRestore();
+    console.table.mockRestore();
   });
 
   function jsonResponse(envelope, overrides = {}) {
@@ -51,12 +57,15 @@ describe('SwarmOtterHandler', () => {
     };
   }
 
-  test('adds magnets through the native API and applies labels', async () => {
+  test('adds magnets through the native bulk API and applies labels', async () => {
     const hash = 'a'.repeat(40);
     const magnet = `magnet:?xt=urn:btih:${'b'.repeat(40)}`;
 
     fetch
-      .mockResolvedValueOnce(jsonResponse(successEnvelope(hash)))
+      .mockResolvedValueOnce(jsonResponse(successEnvelope({
+        added: [{ kind: 'magnet', index: 0, info_hash: hash }],
+        failed: []
+      })))
       .mockResolvedValueOnce(jsonResponse(successEnvelope(null)));
 
     const handler = new window.SwarmOtterHandler({
@@ -69,10 +78,11 @@ describe('SwarmOtterHandler', () => {
     const result = await handler.addTorrents([magnet], ['Movies']);
 
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(fetch.mock.calls[0][0]).toBe('http://localhost:9091/api/v1/torrents/magnet');
+    expect(fetch.mock.calls[0][0]).toBe('http://localhost:9091/api/v1/torrents/bulk');
     expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer secret-token');
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
-      magnet,
+      magnets: [magnet],
+      torrent_files: [],
       download_dir: '/data/downloads'
     });
 
@@ -93,9 +103,13 @@ describe('SwarmOtterHandler', () => {
     });
   });
 
-  test('uploads fetched torrent files through the native raw file endpoint', async () => {
+  test('uploads fetched torrent files through the native bulk API', async () => {
     const hash = 'c'.repeat(40);
-    const torrentBlob = new Blob(['torrent bytes'], { type: 'application/x-bittorrent' });
+    const torrentBlob = {
+      size: 13,
+      type: 'application/x-bittorrent',
+      arrayBuffer: jest.fn(async () => new TextEncoder().encode('torrent bytes').buffer)
+    };
 
     fetch
       .mockResolvedValueOnce({
@@ -106,7 +120,10 @@ describe('SwarmOtterHandler', () => {
         },
         blob: jest.fn(async () => torrentBlob)
       })
-      .mockResolvedValueOnce(jsonResponse(successEnvelope(hash)));
+      .mockResolvedValueOnce(jsonResponse(successEnvelope({
+        added: [{ kind: 'torrent_file', index: 0, info_hash: hash }],
+        failed: []
+      })));
 
     const handler = new window.SwarmOtterHandler({ url: 'http://localhost:9091' });
     handler.isAuthenticated = true;
@@ -115,10 +132,60 @@ describe('SwarmOtterHandler', () => {
 
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch.mock.calls[0][0]).toBe('https://example.test/file.torrent');
-    expect(fetch.mock.calls[1][0]).toBe('http://localhost:9091/api/v1/torrents/file');
-    expect(fetch.mock.calls[1][1].headers['Content-Type']).toBe('application/octet-stream');
-    expect(fetch.mock.calls[1][1].body).toBe(torrentBlob);
+    expect(fetch.mock.calls[1][0]).toBe('http://localhost:9091/api/v1/torrents/bulk');
+    expect(fetch.mock.calls[1][1].headers['Content-Type']).toBe('application/json');
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({
+      magnets: [],
+      torrent_files: [{ metainfo: 'dG9ycmVudCBieXRlcw==' }]
+    });
     expect(result.results[0]).toMatchObject({ success: true, hash });
+  });
+
+  test('maps mixed bulk response indexes back to original URL order', async () => {
+    const firstHash = '1'.repeat(40);
+    const fileHash = '2'.repeat(40);
+    const secondHash = '3'.repeat(40);
+    const firstMagnet = `magnet:?xt=urn:btih:${firstHash}`;
+    const secondMagnet = `magnet:?xt=urn:btih:${secondHash}`;
+    const torrentBlob = {
+      size: 12,
+      type: 'application/x-bittorrent',
+      arrayBuffer: jest.fn(async () => new TextEncoder().encode('mixed bytes').buffer)
+    };
+
+    fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: {
+          get: jest.fn(header => header === 'content-type' ? 'application/x-bittorrent' : null)
+        },
+        blob: jest.fn(async () => torrentBlob)
+      })
+      .mockResolvedValueOnce(jsonResponse(successEnvelope({
+        added: [
+          { kind: 'magnet', index: 0, info_hash: firstHash },
+          { kind: 'magnet', index: 1, info_hash: secondHash },
+          { kind: 'torrent_file', index: 0, info_hash: fileHash }
+        ],
+        failed: []
+      })));
+
+    const handler = new window.SwarmOtterHandler({ url: 'http://localhost:9091' });
+    handler.isAuthenticated = true;
+
+    const result = await handler.addTorrents([
+      firstMagnet,
+      'https://example.test/file.torrent',
+      secondMagnet
+    ]);
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({
+      magnets: [firstMagnet, secondMagnet],
+      torrent_files: [{ metainfo: 'bWl4ZWQgYnl0ZXM=' }]
+    });
+    expect(result.results.map(item => item.hash)).toEqual([firstHash, fileHash, secondHash]);
   });
 
   test('treats native duplicate_torrent responses as successful duplicate sends', async () => {
@@ -127,16 +194,17 @@ describe('SwarmOtterHandler', () => {
 
     fetch
       .mockResolvedValueOnce(jsonResponse({
-        success: false,
-        data: null,
-        error: {
-          code: 'duplicate_torrent',
-          message: `duplicate torrent: ${hash}`
-        }
-      }, {
-        ok: false,
-        status: 409,
-        statusText: 'Conflict'
+        success: true,
+        data: {
+          added: [],
+          failed: [{
+            kind: 'magnet',
+            index: 0,
+            code: 'duplicate_torrent',
+            message: `duplicate torrent: ${hash}`
+          }]
+        },
+        error: null
       }))
       .mockResolvedValueOnce(jsonResponse(successEnvelope(null)));
 

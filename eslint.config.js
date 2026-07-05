@@ -76,6 +76,7 @@ module.exports = [
         URLSearchParams: 'readonly',
         fetch: 'readonly',
         Headers: 'readonly',
+        AbortController: 'readonly',
         atob: 'readonly',
         btoa: 'readonly',
         caches: 'readonly',

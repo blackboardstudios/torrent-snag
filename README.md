@@ -110,18 +110,18 @@ Recommended setup:
 2. In Torrent Snag options, select SwarmOtter.
 3. Set the SwarmOtter URL. Either `http://127.0.0.1:9091` or `http://127.0.0.1:9091/api/v1` is accepted.
 4. If SwarmOtter has `api.require_auth = true`, enter the configured API token. Leave the token blank when SwarmOtter auth is disabled.
-5. Optionally set a SwarmOtter download directory override for magnet links.
+5. Optionally set a SwarmOtter download directory override for batch adds.
 6. Optionally set a default label.
 7. Use **Test Connection** before sending torrents.
 
 Native API behavior:
 
-- Magnet links are sent to `POST /api/v1/torrents/magnet` as `{ magnet, download_dir? }`.
-- Direct `.torrent` URLs are fetched by the extension and uploaded as raw bytes to `POST /api/v1/torrents/file`.
+- Magnet links and direct `.torrent` URLs are sent together through `POST /api/v1/torrents/bulk`.
+- Direct `.torrent` URLs are fetched by the extension and included as base64 `torrent_files[].metainfo` entries in the bulk request.
 - HTML download pages are followed only when they expose a direct `.torrent` link.
 - Labels are applied after add with `POST /api/v1/torrents/:hash/labels`.
-- Duplicate responses from SwarmOtter are treated as successful duplicate sends when the API error includes the duplicate info hash.
-- The optional download directory override applies to magnet adds. Native raw `.torrent` upload currently uses SwarmOtter's configured storage path.
+- Duplicate item responses from SwarmOtter are treated as successful duplicate sends when the API error includes the duplicate info hash.
+- The optional download directory override is sent as bulk `download_dir` and applies to every item in the SwarmOtter batch.
 
 ### Generic Download
 

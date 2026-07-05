@@ -156,13 +156,22 @@ function sendMessageToBackground(testEnv, message, tabId) {
 
 describe('background send result handling', () => {
   let testWindow;
+  let consoleErrorSpy;
+  let consoleInfoSpy;
+  let consoleTableSpy;
 
   beforeEach(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    consoleTableSpy = jest.spyOn(console, 'table').mockImplementation(() => {});
     testWindow = loadBackgroundEnvironment();
   });
 
   afterEach(() => {
     testWindow.window.close();
+    consoleErrorSpy.mockRestore();
+    consoleInfoSpy.mockRestore();
+    consoleTableSpy.mockRestore();
   });
 
   test('returns sender tab id for GET_TAB_ID requests', async () => {
@@ -191,6 +200,7 @@ describe('background send result handling', () => {
     const response = await sendMessageToBackground(testWindow, {
       type: 'SEND_TORRENTS',
       tabId: 77,
+      traceBatchId: 'trace-test-all-failed',
       torrents: [
         { url: 'https://example.test/fail/1.torrent', label: 'label-1' },
         { url: 'https://example.test/fail/2.torrent', label: 'label-2' }
@@ -201,6 +211,7 @@ describe('background send result handling', () => {
       ['https://example.test/fail/1.torrent', 'https://example.test/fail/2.torrent'],
       ['label-1', 'label-2']
     );
+    expect(stubHandler.traceBatchId).toBe('trace-test-all-failed');
     expect(testWindow.window.duplicateTracker.addHash).not.toHaveBeenCalled();
 
     expect(testWindow.window.chrome.tabs.sendMessage).not.toHaveBeenCalledWith(77, expect.objectContaining({

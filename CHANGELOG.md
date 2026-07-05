@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.3.0] 2026-07-05
 
+### Changed
+- Updated the SwarmOtter native handler to submit batches through `POST /api/v1/torrents/bulk`, including base64 `.torrent` payloads, while preserving per-item result mapping, duplicate handling, and post-add label assignment.
+
 ### Fixed
 - Prevented failed or partially failed torrent sends from being recorded as sent, removed from review state, hidden from the badge, or reported as full success.
 - Preserved failed torrent links for retry while removing only successfully sent links from content-script state.
@@ -25,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added `REMOVE_DETECTED_LINKS` message handling for removing multiple successfully sent detected links by exact URL.
 - Added `GET_TAB_ID` message handling for content scripts to resolve their tab-scoped storage key.
+- Added trace logging for popup sends, background handler dispatch, and per-item SwarmOtter submissions, including batch IDs, item indexes, API responses, elapsed times, and final result tables.
 - Added source-backed tests for background send outcomes, content-script multi-remove behavior, popup rendering safety, built-in config reconciliation, URL identity, storage cleanup, and initialization timing.
 - Added source-backed tests for Phase 5 behaviors including enabled-state preservation, import ID generation, context-menu URL validation, duplicate-tracker lifecycle cleanup, and Deluge JSON-RPC request IDs.
 - Added source-backed content-script tests for CONFIG_UPDATED regex cache recompilation and `REMOVE_DETECTED_LINKS` targeted removal semantics, plus options-page coverage that Generic Download testing does not require a server URL.

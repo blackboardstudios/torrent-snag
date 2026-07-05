@@ -5,6 +5,18 @@ let detectedTorrents = [];
 let selectedTorrents = new Set();
 let targetTabId = null;
 
+function createPopupTraceBatchId() {
+    return `popup-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`;
+}
+
+function tracePopupSend(event, details = {}) {
+    console.info('Torrent Snag popup send trace:', event, details);
+}
+
+function tracePopupSendError(event, details = {}, error = null) {
+    console.error('Torrent Snag popup send trace:', event, details, error || '');
+}
+
 // Initialize popup
 document.addEventListener('DOMContentLoaded', async () => {
     // Detect and apply theme
@@ -440,6 +452,9 @@ function applyBulkLabel() {
 }
 
 async function sendSelectedTorrents() {
+    const traceBatchId = createPopupTraceBatchId();
+    const startTime = Date.now();
+
     try {
         if (selectedTorrents.size === 0) {
             return;
@@ -457,11 +472,37 @@ async function sendSelectedTorrents() {
                 label: labelInput ? labelInput.value.trim() : ''
             };
         });
+
+        tracePopupSend('selected torrents prepared', {
+            batchId: traceBatchId,
+            selectedCount: selectedData.length,
+            detectedCount: detectedTorrents.length,
+            tabId: targetTabId
+        });
+        if (typeof console.table === 'function') {
+            console.table(selectedData.map((item, index) => ({
+                batchId: traceBatchId,
+                index: index + 1,
+                hasLabel: Boolean(item.label),
+                url: item.url
+            })));
+        }
         
         const response = await chrome.runtime.sendMessage({
             type: 'SEND_TORRENTS',
             tabId: targetTabId,
+            traceBatchId,
             torrents: selectedData
+        });
+
+        tracePopupSend('background response received', {
+            batchId: traceBatchId,
+            success: response?.success ?? null,
+            partial: response?.partial ?? false,
+            count: response?.count ?? null,
+            total: response?.total ?? null,
+            failed: response?.failed ?? null,
+            elapsedMs: Date.now() - startTime
         });
 
         if (!response || !response.success) {
@@ -475,6 +516,11 @@ async function sendSelectedTorrents() {
         window.close();
         
     } catch (error) {
+        tracePopupSendError('send failed', {
+            batchId: traceBatchId,
+            elapsedMs: Date.now() - startTime,
+            error: error.message
+        }, error);
         console.error('Failed to send torrents:', error);
         showError(`Failed to send torrents: ${error.message}`);
         
