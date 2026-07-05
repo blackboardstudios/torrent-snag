@@ -5,6 +5,22 @@ All notable changes to Torrent Snag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Recommended release impact: patch. If `1.2.0` has already shipped, release these changes as `1.2.1`; if `1.2.0` is still unreleased, fold them into `1.2.0` before tagging.
+
+### Fixed
+- Prevented failed or partially failed torrent sends from being recorded as sent, removed from review state, hidden from the badge, or reported as full success.
+- Preserved failed torrent links for retry while removing only successfully sent links from content-script state.
+- Updated popup send behavior to wait for the background result and keep the popup open on partial or complete failure.
+- Updated context-menu send behavior to avoid showing a success notification when the background send response reports failure.
+- Reconciled stored built-in pattern and filter definitions on config load so stale extension-owned fields are updated while user `enabled` state is preserved.
+- Replaced popup torrent-row interpolation for untrusted torrent names and URLs with DOM construction using text nodes and attributes.
+
+### Added
+- Added `REMOVE_DETECTED_LINKS` message handling for removing multiple successfully sent detected links by exact URL.
+- Added source-backed tests for background send outcomes, content-script multi-remove behavior, popup rendering safety, and built-in config reconciliation.
+
 ## [1.2.0] 2026-05-08
 
 ### Added
@@ -50,4 +66,3 @@ Initial Release
 - Context menus for right-click torrent sending with optional labels
 - Theme support with auto-detect system theme and dark mode override
 - Settings import/export with validation
-

@@ -103,16 +103,39 @@ function deepMerge(defaults, stored) {
 }
 
 function ensureBuiltinItems(currentArray, defaultArray) {
-  if (!Array.isArray(currentArray)) return defaultArray.slice();
-  if (!Array.isArray(defaultArray)) return currentArray.slice();
+  const safeCurrent = Array.isArray(currentArray) ? currentArray : [];
+  const safeDefault = Array.isArray(defaultArray) ? defaultArray : [];
 
-  const byId = new Map(currentArray.map(item => [item.id, item]));
-  defaultArray.forEach(defItem => {
-    if (defItem && defItem.builtin && defItem.id && !byId.has(defItem.id)) {
-      currentArray.push({ ...defItem });
+  const storedById = new Map();
+  safeCurrent.forEach(item => {
+    if (item && item.id) {
+      storedById.set(item.id, item);
     }
   });
-  return currentArray;
+
+  const reconciledBuiltins = [];
+  const seenIds = new Set();
+
+  safeDefault.forEach(defaultItem => {
+    const defaultId = defaultItem && defaultItem.id ? defaultItem.id : undefined;
+    if (!defaultId) {
+      return;
+    }
+    const storedItem = storedById.get(defaultId);
+    if (storedItem) {
+      reconciledBuiltins.push({
+        ...defaultItem,
+        builtin: true,
+        enabled: typeof storedItem.enabled === 'boolean' ? storedItem.enabled : defaultItem.enabled
+      });
+    } else {
+      reconciledBuiltins.push({ ...defaultItem });
+    }
+    seenIds.add(defaultId);
+  });
+
+  const customItems = safeCurrent.filter(item => !(item && item.id && seenIds.has(item.id)));
+  return [...reconciledBuiltins, ...customItems];
 }
 
 const configUtils = {
