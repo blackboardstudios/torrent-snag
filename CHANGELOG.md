@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added source-backed tests for Phase 5 behaviors including enabled-state preservation, import ID generation, context-menu URL validation, duplicate-tracker lifecycle cleanup, and Deluge JSON-RPC request IDs.
 - Added source-backed content-script tests for CONFIG_UPDATED regex cache recompilation and `REMOVE_DETECTED_LINKS` targeted removal semantics, plus options-page coverage that Generic Download testing does not require a server URL.
 - Added ESLint with a flat configuration, wired `npm run lint`, and added a GitHub Actions CI workflow running lint, tests, and production build on push/pull_request.
+- Added SwarmOtter as a native API handler using `/api/v1` magnet, raw torrent upload, health, and labels endpoints.
 
 ## [1.2.0] 2026-05-08
 

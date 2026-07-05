@@ -27,6 +27,7 @@ const HANDLER_TYPES = {
   QBITTORRENT: 'qbittorrent',
   TRANSMISSION: 'transmission',
   DELUGE: 'deluge',
+  SWARMOTTER: 'swarmotter',
   DOWNLOAD: 'download'
 };
 
@@ -72,6 +73,7 @@ describe('HANDLER_TYPES', () => {
     expect(HANDLER_TYPES.QBITTORRENT).toBe('qbittorrent');
     expect(HANDLER_TYPES.TRANSMISSION).toBe('transmission');
     expect(HANDLER_TYPES.DELUGE).toBe('deluge');
+    expect(HANDLER_TYPES.SWARMOTTER).toBe('swarmotter');
     expect(HANDLER_TYPES.DOWNLOAD).toBe('download');
   });
 });

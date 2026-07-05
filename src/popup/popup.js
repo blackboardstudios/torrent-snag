@@ -416,6 +416,7 @@ function getHandlerDisplayName(handlerId) {
       qbittorrent: 'qBittorrent',
       transmission: 'Transmission',
       deluge: 'Deluge',
+      swarmotter: 'SwarmOtter',
       download: 'Generic Download'
     };
 

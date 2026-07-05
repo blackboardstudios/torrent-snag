@@ -21,6 +21,12 @@ const DEFAULT_CONFIG = {
       password: '',
       timeout: 30000
     },
+    swarmotter: {
+      url: 'http://127.0.0.1:9091',
+      authToken: '',
+      downloadDir: '',
+      timeout: 30000
+    },
     download: {
       timeout: 30000
     }
@@ -393,7 +399,7 @@ const configUtils = {
         for (const [handlerType, handlerConfig] of Object.entries(importData.settings.handlers)) {
           if (handlerConfig && typeof handlerConfig === 'object') {
             // Only import valid handler configurations
-            const validHandlerTypes = ['qbittorrent', 'transmission', 'deluge', 'download'];
+            const validHandlerTypes = ['qbittorrent', 'transmission', 'deluge', 'swarmotter', 'download'];
             if (validHandlerTypes.includes(handlerType)) {
               importedHandlers[handlerType] = { ...handlerConfig };
             }
@@ -404,7 +410,7 @@ const configUtils = {
       
       // Import selected handler
       if (importData.settings.selectedHandler && typeof importData.settings.selectedHandler === 'string') {
-        const validHandlerTypes = ['qbittorrent', 'transmission', 'deluge', 'download'];
+        const validHandlerTypes = ['qbittorrent', 'transmission', 'deluge', 'swarmotter', 'download'];
         if (validHandlerTypes.includes(importData.settings.selectedHandler)) {
           newConfig.selectedHandler = importData.settings.selectedHandler;
         }

@@ -33,6 +33,13 @@ describe('options connection requirements', () => {
       fields: ['url', 'username', 'password', 'defaultLabel']
     })).toEqual(['url', 'username', 'password']);
 
+    expect(getRequiredHandlerFields({
+      id: 'swarmotter',
+      name: 'SwarmOtter',
+      requiresAuth: false,
+      fields: ['url', 'authToken', 'downloadDir', 'defaultLabel']
+    })).toEqual(['url']);
+
     dom.window.close();
   });
 });

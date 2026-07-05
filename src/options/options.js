@@ -287,10 +287,33 @@
                     formGroup.appendChild(label);
                     formGroup.appendChild(input);
                     break;
+                case 'authToken':
+                    label.htmlFor = input.id;
+                    label.textContent = 'API token';
+                    input.type = 'password';
+                    input.placeholder = 'Optional SwarmOtter API token';
+                    formGroup.appendChild(label);
+                    formGroup.appendChild(input);
+                    formGroup.appendChild(createFormText('Required only when SwarmOtter api.require_auth is enabled'));
+                    break;
+                case 'downloadDir':
+                    label.htmlFor = input.id;
+                    label.textContent = 'Download directory';
+                    input.type = 'text';
+                    input.placeholder = '/data/downloads';
+                    formGroup.appendChild(label);
+                    formGroup.appendChild(input);
+                    formGroup.appendChild(createFormText('Optional SwarmOtter download_dir override for magnet links'));
+                    break;
                 case 'defaultLabel':
                     label.htmlFor = input.id;
                     const isQBittorrent = handler.id === 'qbittorrent';
-                    label.textContent = isQBittorrent ? 'Default category' : 'Default label/category';
+                    const isSwarmOtter = handler.id === 'swarmotter';
+                    label.textContent = isQBittorrent
+                        ? 'Default category'
+                        : isSwarmOtter
+                            ? 'Default label'
+                            : 'Default label/category';
                     input.type = 'text';
                     input.placeholder = 'e.g., Movies, TV Shows';
                     formGroup.appendChild(label);
@@ -298,6 +321,8 @@
                     formGroup.appendChild(createFormText(
                         isQBittorrent
                             ? 'Optional default category to assign to torrents (leave empty for none)'
+                            : isSwarmOtter
+                                ? 'Optional SwarmOtter label to assign after the torrent is added'
                             : 'Optional default label/category to assign to torrents (leave empty for none)'
                     ));
                     break;

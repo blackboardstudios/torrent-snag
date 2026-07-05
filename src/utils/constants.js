@@ -31,6 +31,7 @@ const HANDLER_TYPES = {
   QBITTORRENT: 'qbittorrent',
   TRANSMISSION: 'transmission',
   DELUGE: 'deluge',
+  SWARMOTTER: 'swarmotter',
   DOWNLOAD: 'download'
 };
 

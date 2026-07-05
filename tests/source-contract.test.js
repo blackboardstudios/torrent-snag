@@ -264,6 +264,51 @@ describe('source configuration contracts', () => {
     expect(config.selectedHandler).toBe('transmission');
     expect(config.handlers.transmission.url).toBe('http://localhost:9091');
   });
+
+  test('default config includes SwarmOtter native API handler settings', async () => {
+    chrome.storage.local.get.mockResolvedValueOnce({
+      config: {}
+    });
+
+    const config = await window.configUtils.getConfig();
+
+    expect(config.handlers.swarmotter).toMatchObject({
+      url: 'http://127.0.0.1:9091',
+      authToken: '',
+      downloadDir: '',
+      timeout: 30000
+    });
+  });
+
+  test('imports SwarmOtter handler configuration and selection', async () => {
+    chrome.storage.local.get.mockResolvedValue({
+      config: {}
+    });
+    chrome.storage.local.set.mockResolvedValue({});
+
+    const importResult = await window.configUtils.importSettings(JSON.stringify({
+      settings: {
+        handlers: {
+          swarmotter: {
+            url: 'http://swarmotter.test:9091',
+            authToken: 'token',
+            downloadDir: '/data/downloads'
+          }
+        },
+        selectedHandler: 'swarmotter'
+      }
+    }));
+
+    expect(importResult.success).toBe(true);
+
+    const savedConfig = chrome.storage.local.set.mock.calls[0][0].config;
+    expect(savedConfig.selectedHandler).toBe('swarmotter');
+    expect(savedConfig.handlers.swarmotter).toMatchObject({
+      url: 'http://swarmotter.test:9091',
+      authToken: 'token',
+      downloadDir: '/data/downloads'
+    });
+  });
 });
 
 describe('source duplicate tracker contracts', () => {

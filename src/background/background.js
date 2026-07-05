@@ -6,6 +6,7 @@ importScripts('../handlers/base-handler.js');
 importScripts('../handlers/qbittorrent-handler.js');
 importScripts('../handlers/transmission-handler.js');
 importScripts('../handlers/deluge-handler.js');
+importScripts('../handlers/swarmotter-handler.js');
 importScripts('../handlers/generic-download-handler.js');
 importScripts('../handlers/handler-factory.js');
 

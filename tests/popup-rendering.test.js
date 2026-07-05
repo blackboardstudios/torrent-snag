@@ -84,6 +84,7 @@ describe('popup torrent rendering', () => {
     expect(hook.getHandlerDisplayName('qbittorrent')).toBe('qBittorrent');
     expect(hook.getHandlerDisplayName('transmission')).toBe('Transmission');
     expect(hook.getHandlerDisplayName('deluge')).toBe('Deluge');
+    expect(hook.getHandlerDisplayName('swarmotter')).toBe('SwarmOtter');
     expect(hook.getHandlerDisplayName('download')).toBe('Generic Download');
     expect(hook.getHandlerDisplayName('custom')).toBe('custom');
 
