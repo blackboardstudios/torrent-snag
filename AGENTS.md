@@ -4,10 +4,10 @@
 
 - **Two build scripts exist with different behavior:**
   - `npm run build` / `node build.js` — uses esbuild to bundle `background.js`, `popup.js`, `options.js` as IIFE, copies remaining assets to `dist/`. Use this for development.
-  - `./build.sh` — naive `cp -r src/* dist/` with no bundling. Does not run esbuild. Use only for quick inspection; it skips bundling of entry points.
+  - `./build.sh` — wrapper around `npm run build` that performs a basic `dist/` file check. It does not run esbuild itself.
   - `npm run build:prod` — same as `build.js` but with minification and no sourcemaps.
 - Always run `npm run build` before loading the extension in Chrome. The `dist/` folder is the loadable unpacked extension.
-- No linting is configured. The `npm run lint` script is a placeholder (`echo`).
+- `npm run lint` runs ESLint against `src/**/*.js`, `tests/**/*.js`, and `build.js`.
 
 ## Testing
 
@@ -22,7 +22,7 @@
 - **Manifest V3 Chrome extension**. Entry points: `src/manifest.json`.
 - **Content script loading order matters**: `utils/config.js` → `utils/hash.js` → `utils/constants.js` → `content/content-script.js` (defined in manifest `content_scripts[].js` array). These are NOT bundled together for content scripts — they load as separate injected scripts.
 - **Background worker** (`src/background/background.js`), **popup** (`src/popup/popup.js`), and **options** (`src/options/options.js`) are bundled via esbuild (IIFE format, targets Chrome 100+).
-- **Handler pattern**: `src/handlers/handler-factory.js` creates client handlers by type string (`qbittorrent`, `transmission`, `deluge`, `download`). Each handler is a standalone class (e.g., `QBittorrentHandler`) loaded as a separate script — they are globals on `window`, not ES modules.
+- **Handler pattern**: `src/handlers/handler-factory.js` creates client handlers by type string (`qbittorrent`, `transmission`, `deluge`, `swarmotter`, `download`). Each handler is a standalone class (e.g., `QBittorrentHandler`) loaded as a separate script — they are globals on `window`, not ES modules.
 - **Config** (`src/utils/config.js`) manages all extension state via `chrome.storage.local`. Uses deep-merge with `DEFAULT_CONFIG` for migration. Built-in patterns/filters are reconciled via `ensureBuiltinItems`.
 - **Constants** (`src/utils/constants.js`) defines `MESSAGE_TYPES`, `STORAGE_KEYS`, `HANDLER_TYPES`, `DEFAULTS`. Tests duplicate these inline — update both when adding new constants.
 - **10 locales** in `src/_locales/`: `en`, `es`, `fr`, `de`, `ru`, `pt`, `zh_CN`, `it`, `ja`, `tr`.
@@ -37,6 +37,6 @@
 
 ## Version & Release
 
-- Current version: `1.2.0` (UNRELEASED per CHANGELOG.md). Version appears in both `package.json` and `src/manifest.json` — update both when bumping.
-- CHANGELOG.md has a duplicated header block (lines 1-6 repeated at lines 29-34) — a known artifact.
-- No CI/CD workflows exist. No pre-commit hooks.
+- Current package/manifest version: `1.3.0`. Version appears in both `package.json` and `src/manifest.json` — update both when bumping.
+- CHANGELOG.md should keep new entries under the matching version section, or a new unpublished section when development resumes after `1.3.0`.
+- CI workflows exist at `.github/workflows/ci.yml` for lint, tests, and production build checks. No pre-commit hooks.

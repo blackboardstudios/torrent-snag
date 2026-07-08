@@ -21,6 +21,12 @@ const DEFAULT_CONFIG = {
       password: '',
       timeout: 30000
     },
+    swarmotter: {
+      url: 'http://127.0.0.1:9091',
+      authToken: '',
+      downloadDir: '',
+      timeout: 30000
+    },
     download: {
       timeout: 30000
     }
@@ -103,16 +109,39 @@ function deepMerge(defaults, stored) {
 }
 
 function ensureBuiltinItems(currentArray, defaultArray) {
-  if (!Array.isArray(currentArray)) return defaultArray.slice();
-  if (!Array.isArray(defaultArray)) return currentArray.slice();
+  const safeCurrent = Array.isArray(currentArray) ? currentArray : [];
+  const safeDefault = Array.isArray(defaultArray) ? defaultArray : [];
 
-  const byId = new Map(currentArray.map(item => [item.id, item]));
-  defaultArray.forEach(defItem => {
-    if (defItem && defItem.builtin && defItem.id && !byId.has(defItem.id)) {
-      currentArray.push({ ...defItem });
+  const storedById = new Map();
+  safeCurrent.forEach(item => {
+    if (item && item.id) {
+      storedById.set(item.id, item);
     }
   });
-  return currentArray;
+
+  const reconciledBuiltins = [];
+  const seenIds = new Set();
+
+  safeDefault.forEach(defaultItem => {
+    const defaultId = defaultItem && defaultItem.id ? defaultItem.id : undefined;
+    if (!defaultId) {
+      return;
+    }
+    const storedItem = storedById.get(defaultId);
+    if (storedItem) {
+      reconciledBuiltins.push({
+        ...defaultItem,
+        builtin: true,
+        enabled: typeof storedItem.enabled === 'boolean' ? storedItem.enabled : defaultItem.enabled
+      });
+    } else {
+      reconciledBuiltins.push({ ...defaultItem });
+    }
+    seenIds.add(defaultId);
+  });
+
+  const customItems = safeCurrent.filter(item => !(item && item.id && seenIds.has(item.id)));
+  return [...reconciledBuiltins, ...customItems];
 }
 
 const configUtils = {
@@ -177,7 +206,7 @@ const configUtils = {
       id: `custom-${Date.now()}`,
       name: pattern.name,
       regex: pattern.regex,
-      enabled: true,
+      enabled: typeof pattern.enabled === 'boolean' ? pattern.enabled : true,
       builtin: false
     };
     config.patterns.push(newPattern);
@@ -206,7 +235,7 @@ const configUtils = {
       id: `filter-${Date.now()}`,
       name: filter.name,
       regex: filter.regex,
-      enabled: true,
+      enabled: typeof filter.enabled === 'boolean' ? filter.enabled : true,
       builtin: false
     };
     config.filters.push(newFilter);
@@ -233,15 +262,24 @@ const configUtils = {
     try {
       const regex = new RegExp(pattern);
       
-      // Test with known problematic patterns to prevent ReDoS
-      const testString = 'a'.repeat(1000);
-      const startTime = Date.now();
-      
-      regex.test(testString);
-      
-      const executionTime = Date.now() - startTime;
-      if (executionTime > 100) {
-        throw new Error('Regex pattern takes too long to execute');
+      // Test with representative patterns to reduce obvious ReDoS risk.
+      // This is a basic execution-time guard, not a complete ReDoS guarantee.
+      const testInputs = [
+        'a'.repeat(1000),
+        'a'.repeat(1000) + '!',
+        `https://example.test/${'segment/'.repeat(80)}?${'a='.repeat(100)}`,
+        `magnet:?xt=urn:btih:${'ABCD'.repeat(10)}&${'tr='.repeat(100)}`
+      ];
+
+      for (const testString of testInputs) {
+        const startTime = Date.now();
+        regex.lastIndex = 0;
+        regex.test(testString);
+        const executionTime = Date.now() - startTime;
+
+        if (executionTime > 100) {
+          throw new Error('Regex pattern execution is too slow');
+        }
       }
       
       return { valid: true };
@@ -301,7 +339,7 @@ const configUtils = {
         importedPatterns.forEach(pattern => {
           newConfig.patterns.push({
             ...pattern,
-            id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
             builtin: false
           });
         });
@@ -318,7 +356,7 @@ const configUtils = {
         importedFilters.forEach(filter => {
           newConfig.filters.push({
             ...filter,
-            id: `filter-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `filter-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
             builtin: false
           });
         });
@@ -361,7 +399,7 @@ const configUtils = {
         for (const [handlerType, handlerConfig] of Object.entries(importData.settings.handlers)) {
           if (handlerConfig && typeof handlerConfig === 'object') {
             // Only import valid handler configurations
-            const validHandlerTypes = ['qbittorrent', 'transmission', 'deluge', 'download'];
+            const validHandlerTypes = ['qbittorrent', 'transmission', 'deluge', 'swarmotter', 'download'];
             if (validHandlerTypes.includes(handlerType)) {
               importedHandlers[handlerType] = { ...handlerConfig };
             }
@@ -372,7 +410,7 @@ const configUtils = {
       
       // Import selected handler
       if (importData.settings.selectedHandler && typeof importData.settings.selectedHandler === 'string') {
-        const validHandlerTypes = ['qbittorrent', 'transmission', 'deluge', 'download'];
+        const validHandlerTypes = ['qbittorrent', 'transmission', 'deluge', 'swarmotter', 'download'];
         if (validHandlerTypes.includes(importData.settings.selectedHandler)) {
           newConfig.selectedHandler = importData.settings.selectedHandler;
         }

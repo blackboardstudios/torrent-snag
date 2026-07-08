@@ -6,6 +6,7 @@ importScripts('../handlers/base-handler.js');
 importScripts('../handlers/qbittorrent-handler.js');
 importScripts('../handlers/transmission-handler.js');
 importScripts('../handlers/deluge-handler.js');
+importScripts('../handlers/swarmotter-handler.js');
 importScripts('../handlers/generic-download-handler.js');
 importScripts('../handlers/handler-factory.js');
 
@@ -45,6 +46,18 @@ const serviceWorkerState = {
     this.lastActivity = Date.now();
   }
 };
+
+function createSendTraceBatchId(source = 'background') {
+  return `${source}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`;
+}
+
+function traceSend(event, details = {}) {
+  console.info('Torrent Snag send trace:', event, details);
+}
+
+function traceSendError(event, details = {}, error = null) {
+  console.error('Torrent Snag send trace:', event, details, error || '');
+}
 
 // Handler management functions
 async function createCurrentHandler() {
@@ -108,6 +121,11 @@ const badgeManager = {
 // Event listeners
 chrome.runtime.onInstalled.addListener(async (details) => {
   await serviceWorkerState.initialize();
+  try {
+    await duplicateTracker.cleanupOldHashes();
+  } catch (error) {
+    console.error('Torrent Snag: Duplicate cleanup failed during install:', error);
+  }
 
   // Only initialize default config on fresh install, or if missing
   try {
@@ -127,6 +145,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 chrome.runtime.onStartup.addListener(async () => {
   await serviceWorkerState.initialize();
+  try {
+    await duplicateTracker.cleanupOldHashes();
+  } catch (error) {
+    console.error('Torrent Snag: Duplicate cleanup failed during startup:', error);
+  }
 });
 
 // Handle extension icon clicks (direct send all torrents)
@@ -140,6 +163,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   serviceWorkerState.updateActivity();
   
   switch (message.type) {
+    case MESSAGE_TYPES.GET_TAB_ID:
+      sendResponse({ tabId: sender.tab?.id ?? null });
+      break;
+
     case MESSAGE_TYPES.UPDATE_BADGE:
       badgeManager.updateBadge(sender.tab?.id, message.count);
       break;
@@ -147,18 +174,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case MESSAGE_TYPES.SEND_TORRENTS:
       // Handle both old format (links array) and new format (torrents array with labels)
       const targetTabId = message.tabId || sender.tab?.id;
+      const traceBatchId = message.traceBatchId || createSendTraceBatchId('message');
       if (message.torrents && Array.isArray(message.torrents)) {
         // New format with labels
         const urls = message.torrents.map(t => t.url);
         const labels = message.torrents.map(t => t.label || '');
-        sendTorrentsToHandler(urls, targetTabId, labels)
+        traceSend('SEND_TORRENTS received', {
+          batchId: traceBatchId,
+          format: 'torrents',
+          count: urls.length,
+          tabId: targetTabId
+        });
+        sendTorrentsToHandler(urls, targetTabId, labels, traceBatchId)
           .then(sendResponse)
-          .catch(error => sendResponse({ success: false, error: error.message }));
+          .catch(error => {
+            traceSendError('SEND_TORRENTS failed before response', {
+              batchId: traceBatchId,
+              count: urls.length,
+              tabId: targetTabId,
+              error: error.message
+            }, error);
+            sendResponse({ success: false, error: error.message });
+          });
       } else if (message.links && Array.isArray(message.links)) {
         // Old format for backward compatibility
-        sendTorrentsToHandler(message.links, targetTabId)
+        traceSend('SEND_TORRENTS received', {
+          batchId: traceBatchId,
+          format: 'links',
+          count: message.links.length,
+          tabId: targetTabId
+        });
+        sendTorrentsToHandler(message.links, targetTabId, [], traceBatchId)
           .then(sendResponse)
-          .catch(error => sendResponse({ success: false, error: error.message }));
+          .catch(error => {
+            traceSendError('SEND_TORRENTS failed before response', {
+              batchId: traceBatchId,
+              count: message.links.length,
+              tabId: targetTabId,
+              error: error.message
+            }, error);
+            sendResponse({ success: false, error: error.message });
+          });
       } else {
         sendResponse({ success: false, error: 'Invalid message format' });
       }
@@ -186,6 +242,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   serviceWorkerState.updateActivity();
   await contextMenuUtils.handleContextMenuClick(info, tab);
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  chrome.storage.local.remove(`${STORAGE_KEYS.DETECTED_LINKS_PREFIX}tab_${tabId}`)
+    .catch(() => {});
 });
 
 // Handle keyboard commands
@@ -234,8 +295,8 @@ async function openReviewPopup(tabId) {
     
     // Store the tab ID so the popup can communicate with the correct tab
     await chrome.storage.local.set({
-      reviewPopupTabId: tabId,
-      reviewPopupWindowId: popup.id
+      [STORAGE_KEYS.REVIEW_POPUP_TAB_ID]: tabId,
+      [STORAGE_KEYS.REVIEW_POPUP_WINDOW_ID]: popup.id
     });
     
   } catch (error) {
@@ -266,7 +327,7 @@ async function handleActionClick(tab) {
     }
     
     const urls = response.links.map(link => link.url);
-    await sendTorrentsToHandler(urls, tab.id, []);
+    await sendTorrentsToHandler(urls, tab.id, [], createSendTraceBatchId('action'));
     
   } catch (error) {
     console.error('Torrent Snag: Failed to handle action click:', error);
@@ -274,47 +335,254 @@ async function handleActionClick(tab) {
   }
 }
 
-async function sendTorrentsToHandler(urls, tabId, labels = []) {
+function normalizeHandlerResult(urls, _labels, result = {}) {
+  const totalCount = Array.isArray(urls) ? urls.length : 0;
+  const normalized = {
+    successfulUrls: [],
+    failedResults: [],
+    results: [],
+    successCount: 0,
+    totalCount,
+    allSucceeded: false,
+    allFailed: false,
+    partiallySucceeded: false
+  };
+
+  const results = Array.isArray(result.results) ? result.results : null;
+
+  if (!results) {
+    if (typeof result.count === 'number' && result.count === totalCount) {
+      normalized.successfulUrls = urls.slice();
+      normalized.results = urls.map((url) => ({ url, success: true }));
+      normalized.successCount = totalCount;
+      normalized.allSucceeded = true;
+      return normalized;
+    }
+
+    normalized.allFailed = totalCount > 0;
+    normalized.failedResults = urls.map((url) => ({
+      url,
+      success: false,
+      error: result.error || 'Failed to send torrent'
+    }));
+    normalized.results = normalized.failedResults;
+    return normalized;
+  }
+
+  results.forEach((item, index) => {
+    const url = urls[index];
+    if (!url) {
+      return;
+    }
+
+    if (item && item.success === true) {
+      normalized.successfulUrls.push(url);
+      normalized.results.push({ ...item, url, success: true });
+      normalized.successCount += 1;
+      return;
+    }
+
+    const failedResult = {
+      url,
+      success: false,
+      error: item?.error || item?.message || 'Failed to send torrent'
+    };
+    normalized.failedResults.push(failedResult);
+    normalized.results.push(failedResult);
+  });
+
+  for (let i = results.length; i < totalCount; i += 1) {
+    const failedResult = {
+      url: urls[i],
+      success: false,
+      error: 'Missing result details for torrent'
+    };
+    normalized.failedResults.push(failedResult);
+    normalized.results.push(failedResult);
+  }
+
+  if (normalized.successCount === normalized.totalCount && normalized.totalCount > 0) {
+    normalized.allSucceeded = true;
+  } else if (normalized.successCount === 0 && normalized.failedResults.length === normalized.totalCount) {
+    normalized.allFailed = true;
+  } else if (normalized.successCount > 0 && normalized.failedResults.length > 0) {
+    normalized.partiallySucceeded = true;
+  } else if (normalized.totalCount === 0 && result.count === 0) {
+    normalized.allSucceeded = true;
+  }
+
+  return normalized;
+}
+
+async function sendTorrentsToHandler(urls, tabId, labels = [], traceBatchId = createSendTraceBatchId('send')) {
+  const startTime = Date.now();
+
   try {
     const handler = await createCurrentHandler();
+    handler.traceBatchId = traceBatchId;
+
+    traceSend('handler dispatch start', {
+      batchId: traceBatchId,
+      handler: handler.constructor?.name || 'UnknownHandler',
+      count: urls.length,
+      tabId,
+      labeledCount: labels.filter(label => Boolean(label)).length
+    });
     
     const result = await handler.addTorrents(urls, labels);
-    
-    // Mark torrents as sent
-    for (const url of urls) {
+    traceSend('handler dispatch raw result', {
+      batchId: traceBatchId,
+      success: result?.success ?? null,
+      count: result?.count ?? null,
+      total: result?.total ?? null,
+      resultsLength: Array.isArray(result?.results) ? result.results.length : null,
+      elapsedMs: Date.now() - startTime
+    });
+    const normalized = normalizeHandlerResult(urls, labels, result);
+
+    traceSend('handler dispatch normalized result', {
+      batchId: traceBatchId,
+      successCount: normalized.successCount,
+      failedCount: normalized.failedResults.length,
+      total: normalized.totalCount,
+      allSucceeded: normalized.allSucceeded,
+      partiallySucceeded: normalized.partiallySucceeded,
+      allFailed: normalized.allFailed,
+      elapsedMs: Date.now() - startTime
+    });
+
+    if (typeof console.table === 'function') {
+      console.table(normalized.results.map((item, index) => ({
+        batchId: traceBatchId,
+        index: index + 1,
+        success: item.success,
+        hash: item.hash || null,
+        duplicate: item.duplicate || false,
+        error: item.error || null,
+        url: item.url
+      })));
+    }
+
+    const urlsToTrack = normalized.successfulUrls;
+
+    await Promise.all(urlsToTrack.map(async (url) => {
       try {
         const hash = await hashUtils.generateHash(url);
         await duplicateTracker.addHash(hash);
       } catch (error) {
         console.error('Torrent Snag: Failed to track hash for:', url, error);
       }
-    }
-    
-    // Clear detected links and badge (ignore if no content script on tab)
+    }));
+
+    const failedCount = normalized.totalCount - normalized.successCount;
+
     if (tabId) {
-      try {
-        await chrome.tabs.sendMessage(tabId, { type: 'CLEAR_DETECTED_LINKS' });
-      } catch (e) {
-        // Tab may not have our content script; ignore
+      if (normalized.allSucceeded) {
+        try {
+          await chrome.tabs.sendMessage(tabId, { type: MESSAGE_TYPES.CLEAR_DETECTED_LINKS });
+        } catch (e) {
+          // Tab may not have our content script; ignore
+        }
+        await badgeManager.clearBadge(tabId);
+      } else if (normalized.partiallySucceeded) {
+        if (urlsToTrack.length > 0) {
+          try {
+            await chrome.tabs.sendMessage(tabId, {
+              type: MESSAGE_TYPES.REMOVE_DETECTED_LINKS,
+              urls: urlsToTrack
+            });
+          } catch (e) {
+            // Tab may not have our content script; keep the partial result non-fatal.
+          }
+        }
+        await badgeManager.updateBadge(tabId, failedCount, false);
+      } else if (normalized.allFailed) {
+        await badgeManager.updateBadge(tabId, failedCount, true);
       }
-      await badgeManager.clearBadge(tabId);
     }
-    
-    // Show success notification
+
+    // Show notification
     const mergedConfig = await configUtils.getConfig();
     const selectedHandler = mergedConfig.selectedHandler || 'qbittorrent';
     const handlerName = HandlerFactory.getAvailableHandlers().find(h => h.id === selectedHandler)?.name || selectedHandler;
+
+    const notificationMessage = normalized.allSucceeded
+      ? `Successfully processed ${normalized.successCount} torrents with ${handlerName}`
+      : normalized.partiallySucceeded
+        ? `Processed ${normalized.successCount} of ${normalized.totalCount} torrents; ${failedCount} failed with ${handlerName}`
+        : `Failed to process torrents with ${handlerName}: ${normalized.failedResults[0]?.error || 'Unknown error'}`;
     
     chrome.notifications.create({
       type: 'basic',
       iconUrl: 'assets/icons/icon-48.png',
       title: 'Torrent Snag',
-      message: `Successfully processed ${result.count} torrents with ${handlerName}`
+      message: notificationMessage
     });
-    
-    return { success: true, count: result.count };
+
+    if (normalized.allSucceeded) {
+      traceSend('handler dispatch response', {
+        batchId: traceBatchId,
+        success: true,
+        count: normalized.successCount,
+        total: normalized.totalCount,
+        failed: 0,
+        elapsedMs: Date.now() - startTime
+      });
+      return {
+        success: true,
+        count: normalized.successCount,
+        total: normalized.totalCount,
+        failed: 0,
+        results: normalized.results
+      };
+    }
+
+    if (normalized.partiallySucceeded) {
+      traceSend('handler dispatch response', {
+        batchId: traceBatchId,
+        success: false,
+        partial: true,
+        count: normalized.successCount,
+        total: normalized.totalCount,
+        failed: failedCount,
+        elapsedMs: Date.now() - startTime
+      });
+      return {
+        success: false,
+        partial: true,
+        count: normalized.successCount,
+        total: normalized.totalCount,
+        failed: failedCount,
+        results: normalized.results
+      };
+    }
+
+    traceSend('handler dispatch response', {
+      batchId: traceBatchId,
+      success: false,
+      count: 0,
+      total: normalized.totalCount,
+      failed: failedCount,
+      error: normalized.failedResults[0]?.error || 'Unknown error',
+      elapsedMs: Date.now() - startTime
+    });
+    return {
+      success: false,
+      count: 0,
+      total: normalized.totalCount,
+      failed: failedCount,
+      results: normalized.results,
+      error: normalized.failedResults[0]?.error || 'Unknown error'
+    };
     
   } catch (error) {
+    traceSendError('handler dispatch failed', {
+      batchId: traceBatchId,
+      count: urls.length,
+      tabId,
+      elapsedMs: Date.now() - startTime,
+      error: error.message
+    }, error);
     console.error('Torrent Snag: Failed to send torrents:', error);
     
     if (tabId) {
@@ -374,43 +642,6 @@ async function testHandlerConnection(handlerType, handlerConfig) {
 }
 
 
-
-
-
-async function cleanupDuplicateTracking() {
-  try {
-    const data = await chrome.storage.local.get([STORAGE_KEYS.DUPLICATE_TRACKING]);
-    const tracking = data.duplicateTracking;
-    
-    if (!tracking?.sentHashes) return;
-
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    const cleaned = {};
-    
-    for (const [hash, hashData] of Object.entries(tracking.sentHashes)) {
-      if (new Date(hashData.timestamp).getTime() > thirtyDaysAgo) {
-        cleaned[hash] = hashData;
-      }
-    }
-    
-    // If still too large, keep only most recent 5000 entries
-    if (Object.keys(cleaned).length > 5000) {
-      const sorted = Object.entries(cleaned)
-        .sort((a, b) => new Date(b[1].timestamp) - new Date(a[1].timestamp))
-        .slice(0, 5000);
-      
-      tracking.sentHashes = Object.fromEntries(sorted);
-    } else {
-      tracking.sentHashes = cleaned;
-    }
-    
-    tracking.lastCleared = new Date().toISOString();
-    await chrome.storage.local.set({ duplicateTracking: tracking });
-    
-  } catch (error) {
-    console.error('Torrent Snag: Cleanup failed:', error);
-  }
-}
 
 // Initialize service worker
 serviceWorkerState.initialize();

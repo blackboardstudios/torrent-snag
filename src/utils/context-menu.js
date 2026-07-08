@@ -2,33 +2,27 @@
 'use strict';
 
 const contextMenuUtils = {
-  // Torrent link detection patterns
-  TORRENT_PATTERNS: [
-    /\.torrent(\?.*)?$/i,
-    /\/download\//i,
-    /\/torrent\//i,
-    /action=download/i,
-    /download\.php/i,
-    /dl\.php/i,
-    /get\.php/i
-  ],
-
   // Check if a URL is a torrent or magnet link
   isTorrentOrMagnetLink(url) {
-    if (!url) return false;
-    
+    if (!url) {
+      return false;
+    }
+
     // Magnet links
     if (url.startsWith('magnet:')) {
-      return true;
+      return /btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})/i.test(url);
     }
     
     // Direct .torrent files
-    if (url.match(/\.torrent(\?.*)?$/i)) {
-      return true;
+    try {
+      const urlObj = new URL(url);
+      if (!['http:', 'https:'].includes(urlObj.protocol)) {
+        return false;
+      }
+      return /\.torrent$/i.test(urlObj.pathname);
+    } catch {
+      return false;
     }
-    
-    // Common torrent site patterns
-    return this.TORRENT_PATTERNS.some(pattern => pattern.test(url));
   },
 
   // Get display name for current handler
@@ -66,11 +60,7 @@ const contextMenuUtils = {
         }
       });
       
-      // Wait a moment then create link menus with completely separate context
-      // This timeout ensures complete separation between action and link contexts
-      setTimeout(() => {
-        this.createLinkMenus();
-      }, 200);
+      await this.createLinkMenus();
       
     } catch (error) {
       console.error('Failed to setup context menus:', error);
@@ -88,8 +78,8 @@ const contextMenuUtils = {
         id: 'link-send-torrent',
         title: `Send to ${handlerName}`,
         contexts: ['link'],
-        documentUrlPatterns: ['*://*/*'], // Any webpage
-        targetUrlPatterns: ['*://*/*', 'magnet:*'], // Any URL or magnet link
+        documentUrlPatterns: ['*://*/*'],
+        targetUrlPatterns: ['http://*/*.torrent*', 'https://*/*.torrent*', 'magnet:*']
       }, () => {
         if (chrome.runtime.lastError) {
           console.error('Error creating link send menu:', chrome.runtime.lastError);
@@ -101,8 +91,8 @@ const contextMenuUtils = {
         id: 'link-send-with-label',
         title: 'Send with label...',
         contexts: ['link'],
-        documentUrlPatterns: ['*://*/*'], // Any webpage
-        targetUrlPatterns: ['*://*/*', 'magnet:*'], // Any URL or magnet link
+        documentUrlPatterns: ['*://*/*'],
+        targetUrlPatterns: ['http://*/*.torrent*', 'https://*/*.torrent*', 'magnet:*']
       }, () => {
         if (chrome.runtime.lastError) {
           console.error('Error creating link label menu:', chrome.runtime.lastError);
@@ -126,18 +116,9 @@ const contextMenuUtils = {
         parentId: 'link-send-with-label',
         title: label,
         contexts: ['link'],
-        documentUrlPatterns: ['*://*/*'], // Any webpage
-        targetUrlPatterns: ['*://*/*', 'magnet:*'] // Any URL or magnet link
+        documentUrlPatterns: ['*://*/*'],
+        targetUrlPatterns: ['http://*/*.torrent*', 'https://*/*.torrent*', 'magnet:*']
       });
-    });
-    
-    chrome.contextMenus.create({
-      id: 'link-label-custom',
-      parentId: 'link-send-with-label',
-      title: 'Custom label...',
-      contexts: ['link'],
-      documentUrlPatterns: ['*://*/*'], // Any webpage
-      targetUrlPatterns: ['*://*/*', 'magnet:*'] // Any URL or magnet link
     });
   },
 
@@ -151,7 +132,7 @@ const contextMenuUtils = {
         title: `Send to ${handlerName}`,
         contexts: ['link'], // Ensure it stays link-only
         documentUrlPatterns: ['*://*/*'],
-        targetUrlPatterns: ['*://*/*', 'magnet:*']
+        targetUrlPatterns: ['http://*/*.torrent*', 'https://*/*.torrent*', 'magnet:*']
       }, () => {
         if (chrome.runtime.lastError) {
           console.error('Error updating link menu:', chrome.runtime.lastError);
@@ -184,7 +165,7 @@ const contextMenuUtils = {
         return;
       }
       
-      if (menuItemId.startsWith('link-label-') && menuItemId !== 'link-label-custom') {
+      if (menuItemId.startsWith('link-label-')) {
         if (!linkUrl || !this.isTorrentOrMagnetLink(linkUrl)) {
           this.showNotification('Selected link is not a torrent or magnet link', 'error');
           return;
@@ -193,16 +174,6 @@ const contextMenuUtils = {
         const labelKey = menuItemId.replace('link-label-', '').replace(/-/g, ' ');
         const label = labelKey.replace(/\b\w/g, l => l.toUpperCase());
         await this.sendTorrentLink(linkUrl, label, tab);
-        return;
-      }
-      
-      if (menuItemId === 'link-label-custom') {
-        if (!linkUrl || !this.isTorrentOrMagnetLink(linkUrl)) {
-          this.showNotification('Selected link is not a torrent or magnet link', 'error');
-          return;
-        }
-        // For now, send without label (could implement custom label input later)
-        await this.sendTorrentLink(linkUrl, '', tab);
         return;
       }
       
@@ -218,7 +189,16 @@ const contextMenuUtils = {
   async sendTorrentLink(linkUrl, label, tab) {
     try {
       // Use existing sendTorrentsToHandler function
-      await sendTorrentsToHandler([linkUrl], tab.id, [label]);
+      const result = await sendTorrentsToHandler([linkUrl], tab.id, [label]);
+
+      if (!result || !result.success) {
+        const errorMessage = result?.error ||
+          (result?.partial
+            ? `Processed ${result.count} of ${result.total}; ${result.failed} failed`
+            : 'Failed to send torrent');
+        this.showNotification(`Failed to send torrent: ${errorMessage}`, 'error');
+        return;
+      }
       
       const handlerName = await this.getHandlerDisplayName();
       const labelText = label ? ` with label "${label}"` : '';

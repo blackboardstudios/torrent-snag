@@ -94,4 +94,29 @@ describe('TransmissionHandler', () => {
 
     expect(result).toBe(false);
   });
+
+  test('sends URL and label in torrent-add filename field', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ result: 'success' }),
+      headers: {
+        get: jest.fn()
+      }
+    });
+
+    const handler = new window.TransmissionHandler({
+      url: 'http://localhost:9091'
+    });
+    handler.isAuthenticated = true;
+
+    const url = 'https://example.test/file.torrent';
+    const label = 'Label';
+    await handler.addTorrents([url], [label]);
+
+    const payload = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(payload.arguments.filename).toBe(url);
+    expect(payload.arguments.labels).toEqual([label]);
+    expect(payload.arguments).toHaveProperty('filename');
+  });
 });

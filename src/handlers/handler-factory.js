@@ -11,6 +11,8 @@ class HandlerFactory {
         return new TransmissionHandler(config);
       case 'deluge':
         return new DelugeHandler(config);
+      case 'swarmotter':
+        return new SwarmOtterHandler(config);
       case 'download':
         return new GenericDownloadHandler(config);
       default:
@@ -40,6 +42,13 @@ class HandlerFactory {
         description: 'Send torrents to Deluge Web UI',
         requiresAuth: true,
         fields: ['url', 'password', 'defaultLabel']
+      },
+      {
+        id: 'swarmotter',
+        name: 'SwarmOtter',
+        description: 'Send torrents to the SwarmOtter native API',
+        requiresAuth: false,
+        fields: ['url', 'authToken', 'downloadDir', 'defaultLabel']
       },
       {
         id: 'download',

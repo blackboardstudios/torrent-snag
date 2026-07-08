@@ -1,7 +1,7 @@
 # Privacy Policy for Torrent Snag
 
 **Published by: Blackboard Studios**
-**Last Updated: May 6, 2026**
+**Last Updated: July 5, 2026**
 
 ## Information We Collect
 
@@ -12,10 +12,11 @@ Torrent Snag is designed with privacy as a core principle. We collect minimal in
 - **User Preferences**: Language settings, theme preferences, and performance configurations
 - **Detection Patterns**: Custom regex patterns and site-specific configurations
 - **Duplicate Tracking**: Hash values of previously processed torrents (for duplicate prevention)
+- **Locally Detected Torrent Signals**: Torrent and magnet links detected on pages where the content script runs, plus nearby link text used for user review. Content inspection and detection happen in your browser only, and detected items may be stored locally until sent, manually removed, auto-cleared, or cleaned up according to configured limits.
 
 ### Data NOT Collected
 - **No Personal Information**: We do not collect names, email addresses, or personal identifiers
-- **No Browsing History**: We do not track or store your browsing patterns or visited websites
+- **No Browsing History Tracking**: We do not build or transmit a browsing history profile. Page links are inspected locally only to detect torrent and magnet links.
 - **No Analytics**: We do not use analytics services or tracking pixels
 - **No External Transmission**: No data is transmitted to external servers or third parties
 
@@ -38,6 +39,7 @@ All data collected is used solely for:
 
 Torrent Snag may communicate with:
 - **Your Torrent Clients**: Only the clients you configure (qBittorrent, Transmission, Deluge)
+- **Your Chosen Destination**: Selected torrent/magnet URLs are sent only to your configured client or Chrome's downloads API when using the download handler.
 - **No Other Services**: We do not integrate with analytics, advertising, or tracking services
 
 ## Data Retention
@@ -69,4 +71,4 @@ You have the right to:
 
 **© 2026 Blackboard Studios. All rights reserved.**
 
-This privacy policy is effective as of July 26, 2025.
+This privacy policy is effective as of July 5, 2026.
