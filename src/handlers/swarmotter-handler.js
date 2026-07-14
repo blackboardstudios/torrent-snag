@@ -188,7 +188,168 @@ class SwarmOtterHandler extends BaseTorrentHandler {
 
   async testConnection() {
     this.isTesting = true;
-    return this.login();
+    this.traceBatchId = this.traceBatchId || this.createTraceBatchId();
+    const batchStartTime = Date.now();
+
+    this.trace('connection test start', {
+      batchId: this.traceBatchId,
+      apiURL: this.apiURL,
+      hasAuthToken: Boolean(this.authToken)
+    });
+
+    // Reachability: a headerless GET /health confirms the daemon is up and the
+    // URL/port are correct. It does NOT exercise SwarmOtter's browser-origin
+    // guard, because a simple cross-origin GET from the service worker carries no
+    // Origin header, so it cannot detect token/origin problems on its own.
+    try {
+      const healthResponse = await this.apiFetch('/health', { method: 'GET' });
+      await this.parseEnvelope(healthResponse, 'SwarmOtter health check');
+    } catch (error) {
+      this.traceError('connection test failed', {
+        batchId: this.traceBatchId,
+        apiURL: this.apiURL,
+        error: error.message
+      }, error);
+      return this.reachabilityFailure(error);
+    }
+
+    // Authorization probe: a JSON POST carries the chrome-extension:// Origin, so
+    // SwarmOtter evaluates its browser-origin guard. An empty bulk body is a
+    // documented no-op (invalid_argument), making this side-effect-free. This is
+    // what distinguishes a token/origin misconfiguration from reachability and
+    // eliminates the false-positive "Test Connection" success.
+    const probe = await this.verifyExtensionAccess();
+    if (!probe.success) {
+      return probe;
+    }
+
+    this.isAuthenticated = true;
+    this.trace('connection test succeeded', {
+      batchId: this.traceBatchId,
+      apiURL: this.apiURL,
+      elapsedMs: Date.now() - batchStartTime
+    });
+    return { success: true };
+  }
+
+  async verifyExtensionAccess() {
+    this.trace('extension access probe start', {
+      batchId: this.traceBatchId,
+      apiURL: this.apiURL,
+      hasAuthToken: Boolean(this.authToken)
+    });
+
+    let response;
+    try {
+      response = await this.apiFetch('/torrents/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ magnets: [], torrent_files: [] })
+      });
+    } catch (error) {
+      this.traceError('extension access probe failed', {
+        batchId: this.traceBatchId,
+        error: error.message
+      }, error);
+      return this.reachabilityFailure(error);
+    }
+
+    const status = response.status;
+    const code = response.ok ? null : await this.readErrorCode(response);
+
+    this.trace('extension access probe response', {
+      batchId: this.traceBatchId,
+      status,
+      ok: response.ok,
+      code
+    });
+
+    // 401/403 are produced by the auth/browser-origin guard, which runs before
+    // request handling. Any other status means the request reached daemon logic,
+    // i.e. the extension origin was accepted (a valid token or a headerless
+    // automation-style request that bypassed the guard).
+    if (status !== 401 && status !== 403) {
+      this.isAuthenticated = true;
+      this.trace('extension access probe succeeded', {
+        batchId: this.traceBatchId,
+        status,
+        code
+      });
+      return { success: true };
+    }
+
+    const failure = this.formatAccessFailure(status, code);
+    this.traceError('extension access probe failed', {
+      batchId: this.traceBatchId,
+      status,
+      code,
+      error: failure.error
+    }, null);
+    return failure;
+  }
+
+  async readErrorCode(response) {
+    try {
+      const text = await response.text();
+      if (!text) {
+        return null;
+      }
+      const envelope = JSON.parse(text);
+      return envelope?.error?.code || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  formatAccessFailure(status, code) {
+    if (status === 403 && code === 'extension_origin_forbidden') {
+      return {
+        success: false,
+        error: 'SwarmOtter blocked this Chrome extension origin. Extension API access requires api.require_auth = true with a configured api.auth_token.',
+        suggestions: [
+          'In SwarmOtter config set api.require_auth = true and api.auth_token, then restart SwarmOtter (auth-disabled mode always rejects chrome-extension origins)',
+          'Copy the same api.auth_token value into the API token field here',
+          'Re-test the connection after saving the token'
+        ]
+      };
+    }
+    if (status === 401) {
+      return {
+        success: false,
+        error: 'SwarmOtter rejected the API token (HTTP 401). The API token here must match api.auth_token exactly.',
+        suggestions: [
+          'Re-open SwarmOtter config and copy api.auth_token',
+          'Paste it into the API token field (surrounding whitespace is trimmed automatically)'
+        ]
+      };
+    }
+    if (status === 403) {
+      return {
+        success: false,
+        error: `SwarmOtter blocked this request (HTTP 403${code ? `: ${code}` : ''}). Check the browser-origin and Host settings on SwarmOtter.`,
+        suggestions: [
+          'Confirm the URL host and port match the SwarmOtter listener',
+          'If SwarmOtter is behind a reverse proxy, ensure it preserves the Host header'
+        ]
+      };
+    }
+    return {
+      success: false,
+      error: `SwarmOtter authorization check failed (HTTP ${status}${code ? `: ${code}` : ''}).`,
+      suggestions: []
+    };
+  }
+
+  reachabilityFailure(error) {
+    return {
+      success: false,
+      error: error.message || 'SwarmOtter could not be reached',
+      suggestions: [
+        'Verify SwarmOtter is running and the API/Web UI port is exposed',
+        'Check that the URL and port match the SwarmOtter listener',
+        'Check for firewall or network restrictions between Chrome and SwarmOtter'
+      ]
+    };
   }
 
   async addTorrents(urls, labels = []) {

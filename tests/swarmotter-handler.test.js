@@ -227,8 +227,18 @@ describe('SwarmOtterHandler', () => {
     });
   });
 
-  test('tests connection against api health without duplicating api path', async () => {
-    fetch.mockResolvedValueOnce(jsonResponse(successEnvelope({ status: 'ok' })));
+  function errorEnvelope(code, message) {
+    return {
+      success: false,
+      data: null,
+      error: { code, message }
+    };
+  }
+
+  test('test connection reaches daemon logic past the origin guard and succeeds', async () => {
+    fetch
+      .mockResolvedValueOnce(jsonResponse(successEnvelope({ status: 'ok' })))
+      .mockResolvedValueOnce(jsonResponse(errorEnvelope('invalid_argument', 'bulk add requires magnets or torrent_files'), { ok: false, status: 400 }));
 
     const handler = new window.SwarmOtterHandler({
       url: 'http://127.0.0.1:9091/api/v1',
@@ -237,8 +247,55 @@ describe('SwarmOtterHandler', () => {
 
     const result = await handler.testConnection();
 
-    expect(result).toBe(true);
+    expect(result).toEqual({ success: true });
+    expect(handler.isAuthenticated).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch.mock.calls[0][0]).toBe('http://127.0.0.1:9091/api/v1/health');
-    expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer secret-token');
+    expect(fetch.mock.calls[1][0]).toBe('http://127.0.0.1:9091/api/v1/torrents/bulk');
+    expect(fetch.mock.calls[1][1].method).toBe('POST');
+    expect(fetch.mock.calls[1][1].headers.Authorization).toBe('Bearer secret-token');
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ magnets: [], torrent_files: [] });
+  });
+
+  test('test connection fails when SwarmOtter rejects the chrome-extension origin', async () => {
+    fetch
+      .mockResolvedValueOnce(jsonResponse(successEnvelope({ status: 'ok' })))
+      .mockResolvedValueOnce(jsonResponse(errorEnvelope('extension_origin_forbidden', 'Chrome extension API access requires api.require_auth = true and a valid configured API token'), { ok: false, status: 403 }));
+
+    const handler = new window.SwarmOtterHandler({ url: 'http://127.0.0.1:9091' });
+
+    const result = await handler.testConnection();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/api\.require_auth/);
+    expect(result.suggestions.length).toBeGreaterThan(0);
+    expect(result.suggestions.join('\n')).toMatch(/api\.auth_token/);
+    expect(handler.isAuthenticated).toBe(false);
+  });
+
+  test('test connection fails when the API token is rejected', async () => {
+    fetch
+      .mockResolvedValueOnce(jsonResponse(successEnvelope({ status: 'ok' })))
+      .mockResolvedValueOnce(jsonResponse(errorEnvelope('unauthenticated', 'invalid api token'), { ok: false, status: 401 }));
+
+    const handler = new window.SwarmOtterHandler({ url: 'http://127.0.0.1:9091', authToken: 'wrong-token' });
+
+    const result = await handler.testConnection();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/401/);
+    expect(result.suggestions.join('\n')).toMatch(/api\.auth_token/);
+  });
+
+  test('test connection reports reachability failure when the daemon is down', async () => {
+    fetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    const handler = new window.SwarmOtterHandler({ url: 'http://127.0.0.1:9091' });
+
+    const result = await handler.testConnection();
+
+    expect(result.success).toBe(false);
+    expect(result.suggestions.length).toBeGreaterThan(0);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
